@@ -39,6 +39,7 @@ async def lifespan(application: FastAPI):
 
     # Check Redis status on startup
     redis_ok = await is_redis_online()
+
     if redis_ok:
         logger.info("Connected to Redis at %s", settings.REDIS_URL)
     else:
@@ -102,14 +103,10 @@ def create_application() -> FastAPI:
 
     # CORS
     #
-    # The production frontend is hosted on Vercel.
-    # Keep the existing settings-based origins and explicitly allow the
-    # deployed Campus NEXUS frontend.
+    # Allow the deployed Campus NEXUS Vercel frontend.
     cors_origins = list(settings.BACKEND_CORS_ORIGINS)
 
-    vercel_frontend_origin = (
-        "https://campus-nexus-20c2pt5db-kstroy.vercel.app"
-    )
+    vercel_frontend_origin = "https://campus-nexus-seven.vercel.app"
 
     if vercel_frontend_origin not in cors_origins:
         cors_origins.append(vercel_frontend_origin)
@@ -146,6 +143,7 @@ def create_application() -> FastAPI:
         )
 
     application.state.limiter = limiter
+
     application.add_exception_handler(
         RateLimitExceeded,
         _rate_limit_exceeded_handler,
