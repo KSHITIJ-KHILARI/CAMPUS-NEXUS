@@ -163,6 +163,7 @@ def create_application() -> FastAPI:
     # ----------------------------------------------------------------------- #
 
     application.include_router(api_router, prefix="/api/v1")
+    application.include_router(api_router)
     application.include_router(auth.router, prefix="/auth", tags=["auth-alias"])
     application.include_router(websocket_router)
 

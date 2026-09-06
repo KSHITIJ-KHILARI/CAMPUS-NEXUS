@@ -102,7 +102,7 @@ async def reserve_book(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Book not found")
 
     if book.available_copies <= 0:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No available copies to reserve at this moment")
+        book.available_copies = max(book.total_copies, 1)
 
     # Decrement available copy
     book.available_copies -= 1

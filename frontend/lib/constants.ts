@@ -19,14 +19,33 @@ function normalizeApiBaseUrl(raw?: string): string {
 }
 
 export const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
-export const WS_BASE_URL =
-  process.env.NEXT_PUBLIC_WS_URL || "wss://ws.campus-nexus.somaiya.edu";
+
+function normalizeWsBaseUrl(raw?: string): string {
+  if (raw && (raw.startsWith("ws://") || raw.startsWith("wss://"))) {
+    return raw.replace(/\/+$/, "");
+  }
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    const api = process.env.NEXT_PUBLIC_API_URL.replace(/\/api\/v1\/?$/, "").replace(/\/+$/, "");
+    if (api.startsWith("https://")) return `${api.replace(/^https:\/\//, "wss://")}/ws`;
+    if (api.startsWith("http://")) return `${api.replace(/^http:\/\//, "ws://")}/ws`;
+  }
+  return "wss://campus-nexus-acfm.onrender.com/ws";
+}
+
+export const WS_BASE_URL = normalizeWsBaseUrl(process.env.NEXT_PUBLIC_WS_URL);
 
 export const MAP_CENTER = { lat: 19.0882, lng: 72.8634 };
 export const MAP_DEFAULT_ZOOM = 16;
-export const MAP_STYLE =
-  "https://api.maptiler.com/tiles/streets-v2-light/style.css?key=" +
-  (process.env.NEXT_PUBLIC_MAPTILER_API_KEY || "YOUR_API_KEY");
+
+function getMapStyle(): string {
+  const key = process.env.NEXT_PUBLIC_MAPTILER_API_KEY;
+  if (key && key !== "YOUR_API_KEY" && key.trim() !== "") {
+    return `https://api.maptiler.com/maps/streets-v2/style.json?key=${key}`;
+  }
+  return "https://demotiles.maplibre.org/style.json";
+}
+
+export const MAP_STYLE = getMapStyle();
 
 export const STATUS_COLORS = {
   operational: "bg-green-500",

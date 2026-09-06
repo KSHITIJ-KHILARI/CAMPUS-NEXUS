@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import "./globals.css"
+import "maplibre-gl/dist/maplibre-gl.css"
 import { AuthProvider } from "@/lib/auth"
 import { SettingsProvider } from "@/lib/settings-context"
 import { LocationProvider } from "@/lib/location-context"

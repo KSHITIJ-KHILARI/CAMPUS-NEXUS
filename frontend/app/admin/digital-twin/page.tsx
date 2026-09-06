@@ -432,7 +432,7 @@ export default function DigitalTwinPage() {
                 <p className="text-white font-semibold flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-emerald-400" /> Real GPS Presence
                 </p>
-                <p>Your Status: <span className={`font-bold ${status === "LIVE" ? "text-emerald-400" : "text-gray-400"}`}>{status}</span></p>
+                <p>Your Status: <span className={`font-bold ${locStatus === "LIVE" ? "text-emerald-400" : "text-gray-400"}`}>{locStatus}</span></p>
                 {latitude != null && longitude != null && (
                   <p>Coordinates: <span className="text-white font-mono">{latitude.toFixed(6)}, {longitude.toFixed(6)}</span></p>
                 )}
