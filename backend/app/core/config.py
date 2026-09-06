@@ -4,11 +4,10 @@ Centralises all environment variables and runtime settings for the
 Campus Nexus backend.
 """
 
-import os
 from functools import lru_cache
 from typing import Any
 
-from pydantic import AnyHttpUrl, Field, field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -24,13 +23,12 @@ class Settings(BaseSettings):
     # --- Application ---
     APP_NAME: str = "Campus Nexus"
     APP_VERSION: str = "1.0.0"
-    ENVIRONMENT: str = Field("development", env="ENVIRONMENT")
-    DEBUG: bool = Field(default=False, env="DEBUG")
+    ENVIRONMENT: str = "development"
+    DEBUG: bool = False
 
     # --- Database ---
-    DATABASE_URL: str = Field(
-        "postgresql+asyncpg://campus_nexus:campus_nexus_pass@localhost:5432/campus_nexus",
-        env="DATABASE_URL",
+    DATABASE_URL: str = (
+        "postgresql+asyncpg://campus_nexus:campus_nexus_pass@localhost:5432/campus_nexus"
     )
 
     @property
@@ -39,20 +37,17 @@ class Settings(BaseSettings):
         return self.DATABASE_URL.replace("asyncpg", "psycopg2")
 
     # --- Redis ---
-    REDIS_URL: str = Field("redis://localhost:6379/0", env="REDIS_URL")
-    REDIS_MAX_CONNECTIONS: int = Field(20, env="REDIS_MAX_CONNECTIONS")
+    REDIS_URL: str = "redis://localhost:6379/0"
+    REDIS_MAX_CONNECTIONS: int = 20
 
     # --- Security & Hosts ---
-    SECRET_KEY: str = Field("dev-secret-key-change-in-production", env="SECRET_KEY")
-    ALGORITHM: str = Field("HS256", env="ALGORITHM")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(1440, env="ACCESS_TOKEN_EXPIRE_MINUTES")
-    REFRESH_TOKEN_EXPIRE_DAYS: int = Field(7, env="REFRESH_TOKEN_EXPIRE_DAYS")
-    BCRYPT_ROUNDS: int = Field(12, env="BCRYPT_ROUNDS")
+    SECRET_KEY: str = "dev-secret-key-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    BCRYPT_ROUNDS: int = 12
 
-    ALLOWED_HOSTS: list[str] = Field(
-        default_factory=lambda: ["*"],
-        env="ALLOWED_HOSTS",
-    )
+    ALLOWED_HOSTS: list[str] = Field(default_factory=lambda: ["*"])
 
     @field_validator("ALLOWED_HOSTS", mode="before")
     @classmethod
@@ -70,8 +65,7 @@ class Settings(BaseSettings):
 
     # --- CORS ---
     BACKEND_CORS_ORIGINS: list[str] = Field(
-        default_factory=lambda: ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"],
-        env="BACKEND_CORS_ORIGINS",
+        default_factory=lambda: ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"]
     )
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
@@ -89,33 +83,33 @@ class Settings(BaseSettings):
         return ["*"]
 
     # --- Rate Limiting ---
-    RATE_LIMIT_ENABLED: bool = Field(True, env="RATE_LIMIT_ENABLED")
-    RATE_LIMIT_DEFAULT: str = Field("100/minute", env="RATE_LIMIT_DEFAULT")
-    RATE_LIMIT_AUTH: str = Field("10/minute", env="RATE_LIMIT_AUTH")
+    RATE_LIMIT_ENABLED: bool = True
+    RATE_LIMIT_DEFAULT: str = "100/minute"
+    RATE_LIMIT_AUTH: str = "10/minute"
 
     # --- AI & Ollama ---
-    OLLAMA_BASE_URL: str = Field("http://localhost:11434", env="OLLAMA_BASE_URL")
-    OLLAMA_MODEL: str = Field("gemma4:12b-mlx", env="OLLAMA_MODEL")
-    LLM_MODEL: str = Field("gpt-4o", env="LLM_MODEL")
-    LLM_PROVIDER: str | None = Field(None, env="LLM_PROVIDER")
-    OPENROUTER_BASE_URL: str = Field("https://openrouter.ai/api/v1", env="OPENROUTER_BASE_URL")
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "gemma4:12b-mlx"
+    LLM_MODEL: str = "gpt-4o"
+    LLM_PROVIDER: str | None = None
+    OPENROUTER_BASE_URL: str = "https://openrouter.ai/api/v1"
 
     # --- Features ---
-    ENABLE_WEBSOCKETS: bool = Field(True, env="ENABLE_WEBSOCKETS")
-    ENABLE_SIMULATION: bool = Field(True, env="ENABLE_SIMULATION")
-    ENABLE_OPTIMIZATION: bool = Field(True, env="ENABLE_OPTIMIZATION")
-    ENABLE_NOTIFICATIONS: bool = Field(True, env="ENABLE_NOTIFICATIONS")
-    ENABLE_AUDIT_LOG: bool = Field(True, env="ENABLE_AUDIT_LOG")
+    ENABLE_WEBSOCKETS: bool = True
+    ENABLE_SIMULATION: bool = True
+    ENABLE_OPTIMIZATION: bool = True
+    ENABLE_NOTIFICATIONS: bool = True
+    ENABLE_AUDIT_LOG: bool = True
 
     # --- External Services ---
-    NEXUS_API_KEY: str | None = Field(None, env="NEXUS_API_KEY")
-    GOOGLE_MAPS_API_KEY: str | None = Field(None, env="GOOGLE_MAPS_API_KEY")
-    OPENAI_API_KEY: str | None = Field(None, env="OPENAI_API_KEY")
+    NEXUS_API_KEY: str | None = None
+    GOOGLE_MAPS_API_KEY: str | None = None
+    OPENAI_API_KEY: str | None = None
 
     # --- Supabase ---
-    SUPABASE_URL: str | None = Field(None, env="SUPABASE_URL")
-    SUPABASE_SECRET_KEY: str | None = Field(None, env="SUPABASE_SECRET_KEY")
-    SUPABASE_ANON_KEY: str | None = Field(None, env="SUPABASE_ANON_KEY")
+    SUPABASE_URL: str | None = None
+    SUPABASE_SECRET_KEY: str | None = None
+    SUPABASE_ANON_KEY: str | None = None
 
     @property
     def EFFECTIVE_AI_KEY(self) -> str | None:
@@ -123,17 +117,17 @@ class Settings(BaseSettings):
         return self.NEXUS_API_KEY or self.OPENAI_API_KEY
 
     # --- Geospatial ---
-    DEFAULT_SEARCH_RADIUS_METERS: int = Field(500, env="DEFAULT_SEARCH_RADIUS_METERS")
+    DEFAULT_SEARCH_RADIUS_METERS: int = 500
 
     # --- Email ---
-    SMTP_HOST: str | None = Field(None, env="SMTP_HOST")
-    SMTP_PORT: int | None = Field(None, env="SMTP_PORT")
-    SMTP_USER: str | None = Field(None, env="SMTP_USER")
-    SMTP_PASSWORD: str | None = Field(None, env="SMTP_PASSWORD")
-    FROM_EMAIL: str = Field("noreply@campus-nexus.local", env="FROM_EMAIL")
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int | None = None
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    FROM_EMAIL: str = "noreply@campus-nexus.local"
 
     # --- Logging ---
-    LOG_LEVEL: str = Field("INFO", env="LOG_LEVEL")
+    LOG_LEVEL: str = "INFO"
 
     @property
     def is_production(self) -> bool:
