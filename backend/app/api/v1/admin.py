@@ -313,9 +313,10 @@ async def list_students(
 ):
     """List all students with optional search."""
     stmt = (
-        select(Student, User)
+        select(Student, User, Program.name, Department.name)
         .join(User, Student.user_id == User.id)
-        .options(selectinload(Student.program), selectinload(Student.department))
+        .outerjoin(Program, Student.program_id == Program.id)
+        .outerjoin(Department, Student.department_id == Department.id)
         .order_by(User.full_name.asc())
     )
     if q:
@@ -324,15 +325,15 @@ async def list_students(
     result = await db.execute(stmt)
     rows = result.all()
     out = []
-    for s_obj, u_obj in rows:
+    for s_obj, u_obj, program_name, department_name in rows:
         out.append(StudentOut(
             id=str(s_obj.id),
             user_id=str(u_obj.id),
             full_name=u_obj.full_name or u_obj.email,
             email=u_obj.email,
             roll_number=s_obj.student_id_number,
-            program=s_obj.program.name if s_obj.program else None,
-            department=s_obj.department.name if s_obj.department else None,
+            program=program_name,
+            department=department_name,
             semester=s_obj.current_semester,
             cgpa=float(s_obj.cgpa) if s_obj.cgpa is not None else None,
             is_active=u_obj.is_active,
