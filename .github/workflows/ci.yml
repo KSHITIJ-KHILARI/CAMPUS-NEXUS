@@ -48,7 +48,7 @@ jobs:
       - name: Run tests
         run: cd backend && pytest tests/ -v
         env:
-          DATABASE_URL: postgresql://campus_nexus:campus_nexus_pass@localhost:5432/campus_nexus
+          DATABASE_URL: postgresql+asyncpg://campus_nexus:campus_nexus_pass@localhost:5432/campus_nexus
           REDIS_URL: redis://localhost:6379/0
           SECRET_KEY: test-secret-key
           ENVIRONMENT: test

@@ -31,10 +31,23 @@ class Settings(BaseSettings):
         "postgresql+asyncpg://campus_nexus:campus_nexus_pass@localhost:5432/campus_nexus"
     )
 
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
+    def parse_database_url(cls, v: Any) -> str:
+        """Ensure DATABASE_URL uses the asyncpg driver for async SQLAlchemy."""
+        if isinstance(v, str):
+            if v.startswith("postgres://"):
+                return v.replace("postgres://", "postgresql+asyncpg://", 1)
+            if v.startswith("postgresql://") and not v.startswith("postgresql+"):
+                return v.replace("postgresql://", "postgresql+asyncpg://", 1)
+        return str(v)
+
     @property
     def SYNC_DATABASE_URL(self) -> str:
         """Return a synchronous database URL for Alembic / migrations."""
-        return self.DATABASE_URL.replace("asyncpg", "psycopg2")
+        if "+asyncpg" in self.DATABASE_URL:
+            return self.DATABASE_URL.replace("+asyncpg", "")
+        return self.DATABASE_URL
 
     # --- Redis ---
     REDIS_URL: str = "redis://localhost:6379/0"
