@@ -48,11 +48,11 @@ class Admin(Base):
         "User",
         back_populates="admin_profile",
         foreign_keys="Admin.user_id",
-        lazy="selectin",
+        lazy="select",
     )
     department: Mapped["Department | None"] = relationship(
         "Department",
         back_populates="admins",
-        lazy="selectin",
+        lazy="select",
     )
 

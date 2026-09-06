@@ -66,18 +66,18 @@ class Faculty(Base):
         "User",
         back_populates="faculty_profile",
         foreign_keys="Faculty.user_id",
-        lazy="selectin",
+        lazy="select",
     )
     department: Mapped["Department | None"] = relationship(
         "Department",
         back_populates="faculties",
-        lazy="selectin",
+        lazy="select",
         foreign_keys="Faculty.department_id",
     )
     course_sections: Mapped[list["CourseSection"]] = relationship(
         "CourseSection",
         back_populates="faculty",
-        lazy="selectin",
+        lazy="select",
         primaryjoin="Faculty.id==CourseSection.faculty_id",
     )
 

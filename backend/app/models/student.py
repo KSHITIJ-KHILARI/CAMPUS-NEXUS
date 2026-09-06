@@ -59,28 +59,28 @@ class Student(Base):
         "User",
         back_populates="student_profile",
         foreign_keys="Student.user_id",
-        lazy="selectin",
+        lazy="select",
     )
     program: Mapped["Program | None"] = relationship(
         "Program",
         back_populates="students",
-        lazy="selectin",
+        lazy="select",
     )
     department: Mapped["Department | None"] = relationship(
         "Department",
         back_populates="students",
-        lazy="selectin",
+        lazy="select",
     )
     enrollments: Mapped[list["Enrollment"]] = relationship(
         "Enrollment",
         back_populates="student",
-        lazy="selectin",
+        lazy="select",
     )
     schedule_entries: Mapped[list["StudentSchedule"]] = relationship(
         "StudentSchedule",
         primaryjoin="and_(Student.id==foreign(StudentSchedule.student_id))",
         viewonly=True,
-        lazy="selectin",
+        lazy="select",
     )
     
 
