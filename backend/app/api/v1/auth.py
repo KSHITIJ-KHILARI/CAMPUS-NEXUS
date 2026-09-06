@@ -59,8 +59,8 @@ async def login(
             detail="Email/username and password are required",
         )
 
-    clean_email = str(email).strip()
-    result = await db.execute(select(User).where(User.email.ilike(clean_email)))
+    clean_email = str(email).strip().lower()
+    result = await db.execute(select(User).where(User.email == clean_email))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(str(password), user.hashed_password):
@@ -77,10 +77,21 @@ async def login(
         )
 
     role_val = str(getattr(user.role, "value", user.role))
+    if role_val.startswith("UserRole."):
+        role_val = role_val.split(".", 1)[1].lower()
+
     access_token = create_access_token(subject=str(user.id), data={"role": role_val})
     refresh_tok = create_refresh_token(subject=str(user.id), data={"role": role_val})
 
-    user_data = UserInDB.model_validate(user)
+    user_data = User(
+        id=user.id,
+        email=user.email,
+        full_name=user.full_name or "",
+        role=role_val,
+        is_active=user.is_active,
+        created_at=getattr(user, "created_at", None),
+        updated_at=getattr(user, "updated_at", None),
+    )
 
     return Token(
         access_token=access_token,
