@@ -3,7 +3,7 @@
 Defines SQLAlchemy ORM models for all campus entities.
 """
 
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.models.student import Student
 from app.models.faculty import Faculty
 from app.models.admin import Admin
@@ -56,6 +56,7 @@ from app.models.admin_rush_override import AdminRushOverride
 
 __all__ = [
     "User",
+    "UserRole",
     "Student",
     "Faculty",
     "Admin",
