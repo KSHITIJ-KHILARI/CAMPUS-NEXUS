@@ -178,6 +178,8 @@ async def init_db() -> None:
         },
     ]
 
+    from app.core.security import verify_password
+
     async with async_session_factory() as session:
         for u in demo_users:
             res = await session.execute(select(User).where(User.email == u["email"]))
@@ -194,7 +196,8 @@ async def init_db() -> None:
                 )
                 session.add(existing)
             else:
-                existing.hashed_password = hash_password("demo123")
+                if not verify_password("demo123", str(existing.hashed_password or "")):
+                    existing.hashed_password = hash_password("demo123")
                 existing.is_active = True
                 existing.is_verified = True
         await session.commit()

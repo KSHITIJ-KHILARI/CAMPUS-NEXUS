@@ -13,11 +13,16 @@ from passlib.context import CryptContext
 
 from app.core.config import settings
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=settings.BCRYPT_ROUNDS,
-)
+import bcrypt
+
+try:
+    pwd_context = CryptContext(
+        schemes=["bcrypt"],
+        deprecated="auto",
+        bcrypt__rounds=settings.BCRYPT_ROUNDS,
+    )
+except Exception:
+    pwd_context = None
 
 # --------------------------------------------------------------------------- #
 # Password hashing
@@ -32,7 +37,15 @@ def hash_password(password: str) -> str:
     Returns:
         A bcrypt-hashed password string.
     """
-    return pwd_context.hash(password)
+    try:
+        # Bcrypt has a maximum password length of 72 bytes
+        pwd_bytes = password.encode("utf-8")[:72]
+        salt = bcrypt.gensalt(rounds=settings.BCRYPT_ROUNDS)
+        return bcrypt.hashpw(pwd_bytes, salt).decode("utf-8")
+    except Exception:
+        if pwd_context is not None:
+            return pwd_context.hash(password)
+        raise
 
 
 get_password_hash = hash_password
@@ -48,7 +61,20 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     Returns:
         ``True`` if the password matches the hash, ``False`` otherwise.
     """
-    return pwd_context.verify(plain_password, hashed_password)
+    if not plain_password or not hashed_password:
+        return False
+
+    try:
+        pwd_bytes = plain_password.encode("utf-8")[:72]
+        hash_bytes = hashed_password.encode("utf-8")
+        return bcrypt.checkpw(pwd_bytes, hash_bytes)
+    except Exception:
+        try:
+            if pwd_context is not None:
+                return pwd_context.verify(plain_password, hashed_password)
+        except Exception:
+            return False
+        return False
 
 
 # --------------------------------------------------------------------------- #
