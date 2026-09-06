@@ -55,25 +55,25 @@ class FoundItem(Base):
     # --- Relationships ---
     location: Mapped["CampusLocation | None"] = relationship(
         "CampusLocation",
-        lazy="selectin",
+        lazy="select",
     )
     room: Mapped["Room | None"] = relationship(
         "Room",
-        lazy="selectin",
+        lazy="select",
     )
     found_by: Mapped["User"] = relationship(
         "User",
         foreign_keys="FoundItem.found_by_user_id",
-        lazy="selectin",
+        lazy="select",
     )
     claimed_by: Mapped["User | None"] = relationship(
         "User",
         foreign_keys="FoundItem.claimed_by_user_id",
-        lazy="selectin",
+        lazy="select",
     )
     lost_item_matches: Mapped[list["LostFoundMatch"]] = relationship(
         "LostFoundMatch",
         foreign_keys="LostFoundMatch.found_item_id",
         back_populates="found_item",
-        lazy="selectin",
+        lazy="select",
     )
