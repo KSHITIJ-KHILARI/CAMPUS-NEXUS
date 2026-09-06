@@ -69,43 +69,54 @@ async def list_lost_found_items(
     current_user: User = Depends(get_current_active_user),
 ):
     """List lost and found item reports."""
+    from app.models.campus_location import CampusLocation
     items_out = []
 
     if not type or type == "lost":
-        stmt = select(LostItem)
+        stmt = (
+            select(LostItem, CampusLocation.name.label("location_name"))
+            .outerjoin(CampusLocation, LostItem.location_id == CampusLocation.id)
+        )
         if q:
             stmt = stmt.where((LostItem.category.ilike(f"%{q}%")) | (LostItem.description.ilike(f"%{q}%")))
         result = await db.execute(stmt)
-        for li in result.scalars().all():
+        for li, loc_name in result.all():
+            cat_val = str(getattr(li.category, "value", li.category) or "electronics")
+            status_val = str(getattr(li.status, "value", li.status) or "lost")
             items_out.append(
                 LostFoundItemOut(
                     id=str(li.id),
-                    title=li.name or f"{li.category.capitalize()} Item",
+                    title=li.name or f"{cat_val.capitalize()} Item",
                     description=li.description,
-                    category=li.category or "electronics",
-                    location=_get_item_location(li, "Aurobindo Building"),
+                    category=cat_val,
+                    location=loc_name or "Aurobindo Building",
                     type="lost",
-                    status=str(li.status or "lost"),
+                    status=status_val,
                     reported_by=str(li.reported_by_user_id),
                     reported_at=datetime.utcnow(),
                 )
             )
 
     if not type or type == "found":
-        stmt = select(FoundItem)
+        stmt = (
+            select(FoundItem, CampusLocation.name.label("location_name"))
+            .outerjoin(CampusLocation, FoundItem.location_id == CampusLocation.id)
+        )
         if q:
             stmt = stmt.where((FoundItem.category.ilike(f"%{q}%")) | (FoundItem.description.ilike(f"%{q}%")))
         result = await db.execute(stmt)
-        for fi in result.scalars().all():
+        for fi, loc_name in result.all():
+            cat_val = str(getattr(fi.category, "value", fi.category) or "electronics")
+            status_val = str(getattr(fi.status, "value", fi.status) or "unclaimed")
             items_out.append(
                 LostFoundItemOut(
                     id=str(fi.id),
-                    title=fi.name or f"{fi.category.capitalize()} Item",
+                    title=fi.name or f"{cat_val.capitalize()} Item",
                     description=fi.description,
-                    category=fi.category or "electronics",
-                    location=_get_item_location(fi, "Central Library"),
+                    category=cat_val,
+                    location=loc_name or "Central Library",
                     type="found",
-                    status=str(fi.status or "unclaimed"),
+                    status=status_val,
                     reported_by=str(fi.found_by_user_id),
                     reported_at=datetime.utcnow(),
                 )

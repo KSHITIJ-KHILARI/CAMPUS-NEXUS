@@ -324,10 +324,11 @@ class LocationService:
             )
         )
         stale = result.scalars().all()
-        for ov in stale:
-            ov.is_active = False
-            db.add(ov)
-        await db.commit()
+        if stale:
+            for ov in stale:
+                ov.is_active = False
+                db.add(ov)
+            await db.commit()
         return len(stale)
 
     @staticmethod
