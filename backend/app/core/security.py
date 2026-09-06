@@ -67,8 +67,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     try:
         pwd_bytes = plain_password.encode("utf-8")[:72]
         hash_bytes = hashed_password.encode("utf-8")
-        if bcrypt.checkpw(pwd_bytes, hash_bytes):
-            return True
+        if len(hash_bytes) == 60 and (hash_bytes.startswith(b"$2b$") or hash_bytes.startswith(b"$2a$")):
+            if bcrypt.checkpw(pwd_bytes, hash_bytes):
+                return True
     except Exception:
         pass
 
