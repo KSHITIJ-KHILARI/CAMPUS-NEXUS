@@ -189,57 +189,95 @@ export default function StudentDashboard() {
         )}
       </Card>
 
-      {/* Live Campus Pulse */}
+      {/* Live Campus Telemetry */}
       <div>
         <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
           <Activity className="h-5 w-5 text-red-500" />
           Live Campus Telemetry & Density
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
-                  <UtensilsCrossed className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="font-medium text-white">Main Canteen</p>
-                  <p className="text-xs text-gray-400">140 / 150 Seats Occupied</p>
-                </div>
-              </div>
-              <Badge variant="danger">High</Badge>
-            </div>
-          </Card>
+          {(() => {
+            const canteen = rushTelemetry.find((r: any) =>
+              r.location_name?.toLowerCase().includes("canteen") || r.location_id === 5
+            );
+            const canteenLevel = (canteen?.rush_level || "LOW").toUpperCase();
+            const canteenVariant = canteenLevel === "HIGH" || canteenLevel === "VERY_HIGH" ? "danger" : canteenLevel === "MODERATE" ? "warning" : "success";
 
-          <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
-                  <BookOpen className="h-5 w-5" />
+            return (
+              <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
+                      <UtensilsCrossed className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">{canteen?.location_name || "Main Canteen"}</p>
+                      <p className="text-xs text-gray-400">
+                        {canteen ? `${canteen.current_count} / ${canteen.capacity || 150} Present` : "Live telemetry sync"}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={canteenVariant}>{canteenLevel.replace("_", " ")}</Badge>
                 </div>
-                <div>
-                  <p className="font-medium text-white">Central Library</p>
-                  <p className="text-xs text-gray-400">65 / 120 Seats Occupied</p>
-                </div>
-              </div>
-              <Badge variant="success">Moderate</Badge>
-            </div>
-          </Card>
+              </Card>
+            );
+          })()}
 
-          <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
-                  <Coffee className="h-5 w-5" />
+          {(() => {
+            const library = rushTelemetry.find((r: any) =>
+              r.location_name?.toLowerCase().includes("library") || r.location_id === 4
+            );
+            const libraryLevel = (library?.rush_level || "LOW").toUpperCase();
+            const libraryVariant = libraryLevel === "HIGH" || libraryLevel === "VERY_HIGH" ? "danger" : libraryLevel === "MODERATE" ? "warning" : "success";
+
+            return (
+              <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
+                      <BookOpen className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">{library?.location_name || "Central Library"}</p>
+                      <p className="text-xs text-gray-400">
+                        {library ? `${library.current_count} / ${library.capacity || 120} Present` : "Live telemetry sync"}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={libraryVariant}>{libraryLevel.replace("_", " ")}</Badge>
                 </div>
-                <div>
-                  <p className="font-medium text-white">Maggi Point</p>
-                  <p className="text-xs text-gray-400">Moderate queue density</p>
+              </Card>
+            );
+          })()}
+
+          {(() => {
+            const foodSpot = rushTelemetry.find((r: any) =>
+              r.location_name?.toLowerCase().includes("maggi") ||
+              r.location_name?.toLowerCase().includes("nescafe") ||
+              r.location_id === 9
+            );
+            const foodLevel = (foodSpot?.rush_level || "LOW").toUpperCase();
+            const foodVariant = foodLevel === "HIGH" || foodLevel === "VERY_HIGH" ? "danger" : foodLevel === "MODERATE" ? "warning" : "success";
+
+            return (
+              <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
+                      <Coffee className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-white">{foodSpot?.location_name || "Maggi Point"}</p>
+                      <p className="text-xs text-gray-400">
+                        {foodSpot ? `${foodSpot.current_count} / ${foodSpot.capacity || 50} Present` : "Live telemetry sync"}
+                      </p>
+                    </div>
+                  </div>
+                  <Badge variant={foodVariant}>{foodLevel.replace("_", " ")}</Badge>
                 </div>
-              </div>
-              <Badge variant="warning">Moderate</Badge>
-            </div>
-          </Card>
+              </Card>
+            );
+          })()}
         </div>
       </div>
 
