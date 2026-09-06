@@ -1,0 +1,30 @@
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = [
+    "alembic",
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "check_*.py",
+    "fix_*.py",
+    "test_*.py",
+    "scratch_*.py"
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "W"]
+ignore = [
+    "E501",
+    "E402",
+    "E712",
+    "F401",
+    "F821",
+    "F841",
+    "F601",
+    "F541",
+    "W291",
+    "W292",
+    "W293"
+]
