@@ -1,0 +1,91 @@
+# ==========================================
+# Environments and Secrets
+# ==========================================
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+!.env.example
+!.env.local.example
+
+# ==========================================
+# Python & Virtual Environments
+# ==========================================
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# ==========================================
+# Databases & Local Data Dumps
+# ==========================================
+*.db
+*.sqlite
+*.sqlite3
+
+# ==========================================
+# Node & Next.js Build Outputs
+# ==========================================
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.next/
+out/
+.vercel
+*.tsbuildinfo
+next-env.d.ts
+
+# ==========================================
+# Uploads, Logs & Scratch Files
+# ==========================================
+uploads/
+logs/
+*.log
+scratch/
+scratch_*.py
+backend/scratch_*.py
+test_debug*.py
+backend/test_debug*.py
+test_final_check.py
+backend/test_final_check.py
+tmp/
+temp/
+
+# ==========================================
+# IDE & Operating System Files
+# ==========================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*.swo

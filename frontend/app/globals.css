@@ -1,0 +1,532 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --border: 0 0% 85.8%;
+  }
+
+  /* Dark mode (default) */
+  .dark {
+    color-scheme: dark;
+  }
+
+  .dark body {
+    @apply bg-campus-darker text-white;
+  }
+  .dark {
+    --background: 0 0% 6.3%;
+    --foreground: 0 0% 100%;
+    --card: 0 0% 10.2%;
+    --border: 220 20% 15%;
+    --primary: 0 67% 36.5%;
+  }
+
+  /* Light mode */
+  .light {
+    color-scheme: light;
+    --background: 0 0% 100%;
+    --foreground: 220 10% 7%;
+    --card: 0 0% 100%;
+    --border: 0 0% 86.7%;
+    --primary: 0 78.9% 33.3%;
+  }
+
+  .light body {
+    background-color: #FFFFFF;
+    color: #111111;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-white/10;
+  }
+
+  .light * {
+    @apply border-campus-light-border;
+  }
+
+  body {
+    @apply bg-campus-darker text-white;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Glass effects — dark mode */
+  .glass {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl;
+  }
+  
+  .glass-dark {
+    @apply bg-black/20 backdrop-blur-xl border border-white/5 rounded-2xl;
+  }
+
+  /* Status badges (dark mode) */
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-green {
+    @apply bg-green-500/10 text-green-500 border border-green-500/20;
+  }
+
+  .status-yellow {
+    @apply bg-yellow-500/10 text-yellow-500 border border-yellow-500/20;
+  }
+
+  .status-red {
+    @apply bg-red-500/10 text-red-500 border border-red-500/20;
+  }
+
+  .card-hover {
+    @apply transition-all duration-200 ease-out hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 hover:border-white/20;
+  }
+
+  .smooth-transition {
+    @apply transition-all duration-150 ease-out;
+  }
+}
+
+/* ===== LIGHT MODE — COMPLETE INSTITUTIONAL COLOR SYSTEM ===== */
+/* All overrides are standalone CSS rules (outside @layer) to avoid
+   circular dependency with Tailwind utility class resolution */
+
+/* --- Light mode glass overrides --- */
+.light .glass {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-color: #E5E5E5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.light .glass-dark {
+  background-color: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  border-color: #E5E5E5;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+/* Status badges — light mode */
+.light .status-green {
+  background-color: #dcf0ed;
+  color: #16855B;
+  border-color: #a7f3d0;
+}
+
+.light .status-yellow {
+  background-color: #fef3c7;
+  color: #B7791F;
+  border-color: #fde68a;
+}
+
+.light .status-red {
+  background-color: #fee2e2;
+  color: #B42318;
+  border-color: #fca5a5;
+}
+
+/* --- Background colors --- */
+.light .bg-campus-darker,
+.light .bg-campus-dark {
+  background-color: #FFFFFF;
+}
+
+.light .bg-campus-card {
+  background-color: #FFFFFF;
+}
+
+.light .bg-campus-light-bg {
+  background-color: #FFFFFF;
+}
+
+.light .bg-campus-light-card {
+  background-color: #F7F7F7;
+}
+
+.light .bg-white\/5,
+.light .bg-white\/10 {
+  background-color: #F7F7F7;
+}
+
+.light .bg-white\/15 {
+  background-color: #F2F2F2;
+}
+
+.light .bg-white\/20 {
+  background-color: #EEEEEE;
+}
+
+.light .bg-white\/50 {
+  background-color: #E0E0E0;
+}
+
+/* Semi-transparent dark backgrounds for content overlays (not modal backdrops) */
+.light .bg-black\/75,
+.light .bg-black\/80,
+.light .bg-black\/90 {
+  background-color: #FFFFFF;
+}
+
+.light .bg-slate-950 {
+  background-color: #FFFFFF;
+}
+
+.light .bg-slate-900\/90 {
+  background-color: #FFFFFF;
+}
+
+.light .bg-white\/\[0\.02\] {
+  background-color: #FFFFFF;
+}
+
+/* Active / selection backgrounds */
+.light .bg-campus-primary\/5,
+.light .bg-campus-primary\/10,
+.light .bg-campus-primary\/15,
+.light .bg-campus-primary\/20,
+.light .bg-campus-primary\/25,
+.light .bg-campus-primary\/30 {
+  background-color: #F5E7EA;
+}
+
+/* Status indicator backgrounds */
+.light .bg-green-500\/10,
+.light .bg-emerald-500\/10,
+.light .bg-green-100\/20 {
+  background-color: #E6F4F1;
+}
+
+.light .bg-red-500\/10,
+.light .bg-red-100\/20 {
+  background-color: #FEE2E2;
+}
+
+.light .bg-amber-500\/10,
+.light .bg-yellow-500\/10,
+.light .bg-amber-100\/20,
+.light .bg-yellow-100\/20 {
+  background-color: #FEF3C7;
+}
+
+.light .bg-blue-500\/10,
+.light .bg-blue-100\/20 {
+  background-color: #DBEAFE;
+}
+
+.light .bg-purple-100\/20 {
+  background-color: #F3E8FD;
+}
+
+/* Hover backgrounds */
+.light .hover\:bg-white\/5:hover {
+  background-color: #EEEEEE;
+}
+
+.light .hover\:bg-white\/10:hover {
+  background-color: #EEEEEE;
+}
+
+.light .hover\:bg-campus-primary\/10:hover {
+  background-color: #F5E7EA;
+}
+
+.light .hover\:bg-campus-primary\/5:hover {
+  background-color: #F5E7EA;
+}
+
+/* --- Text colors --- */
+.light .text-white {
+  color: #111111;
+}
+
+.light .text-gray-100,
+.light .text-gray-50,
+.light .text-gray-200 {
+  color: #111111;
+}
+
+.light .text-gray-300 {
+  color: #707070;
+}
+
+.light .text-gray-400 {
+  color: #444444;
+}
+
+.light .text-gray-500 {
+  color: #707070;
+}
+
+.light .text-gray-600 {
+  color: #444444;
+}
+
+.light .text-gray-700 {
+  color: #444444;
+}
+
+.light .text-gray-800 {
+  color: #111111;
+}
+
+.light .text-gray-900 {
+  color: #111111;
+}
+
+/* Status text colors */
+.light .text-green-400,
+.light .text-green-500,
+.light .text-emerald-400,
+.light .text-emerald-500,
+.light .text-emerald-600,
+.light .text-green-600 {
+  color: #16855B;
+}
+
+.light .text-yellow-400,
+.light .text-yellow-500,
+.light .text-amber-400,
+.light .text-amber-500,
+.light .text-amber-600,
+.light .text-yellow-300 {
+  color: #B7791F;
+}
+
+/* Red family */
+.light .text-red-300 {
+  color: #A51C30;
+}
+
+.light .text-red-400 {
+  color: #B42318;
+}
+
+.light .text-red-500 {
+  color: #8F1728;
+}
+
+.light .text-red-600,
+.light .text-red-700 {
+  color: #B42318;
+}
+
+/* Blue family — maroon (brand) in light mode */
+.light .text-blue-300 {
+  color: #A51C30;
+}
+
+.light .text-blue-400 {
+  color: #A51C30;
+}
+
+.light .text-blue-500 {
+  color: #8F1728;
+}
+
+.light .text-campus-blue {
+  color: #3B6EA5;
+}
+
+.light .text-purple-400,
+.light .text-purple-500 {
+  color: #707070;
+}
+
+.light .text-pink-400,
+.light .text-pink-500 {
+  color: #707070;
+}
+
+.light .text-campus-primary {
+  color: #A51C30;
+}
+
+.light .text-campus-red {
+  color: #B42318;
+}
+
+/* Hover text */
+.light .hover\:text-white:hover {
+  color: #111111;
+}
+
+.light .hover\:text-red-400:hover {
+  color: #B42318;
+}
+
+.light .group:hover .text-gray-400 {
+  color: #111111;
+}
+
+.light .group:hover .text-gray-300 {
+  color: #111111;
+}
+
+/* Placeholder text */
+.light .placeholder-gray-400::placeholder {
+  color: #707070;
+}
+
+.light .placeholder-gray-500::placeholder {
+  color: #707070;
+}
+
+/* --- Border colors --- */
+.light .border-white\/10 {
+  border-color: #DCDCDC;
+}
+
+.light .border-white\/5 {
+  border-color: #DCDCDC;
+}
+
+.light .border-white\/20 {
+  border-color: #C8C8C8;
+}
+
+.light .border-white\/30 {
+  border-color: #BDBDBD;
+}
+
+.light .border-white\/50 {
+  border-color: #BDBDBD;
+}
+
+/* Status borders */
+.light .border-green-500\/20 {
+  border-color: #A7F3D0;
+}
+
+.light .border-yellow-500\/20,
+.light .border-amber-500\/20 {
+  border-color: #FDE68A;
+}
+
+.light .border-red-500\/20 {
+  border-color: #FCA5A5;
+}
+
+/* Hover borders */
+.light .hover\:border-white\/10:hover {
+  border-color: #C8C8C8;
+}
+
+/* Focus borders */
+.light .focus\:border-red-500:focus,
+.light .focus\:border-red-500:focus-within {
+  border-color: #A51C30;
+}
+
+/* --- Scrollbar — light --- */
+.light ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.light ::-webkit-scrollbar-track {
+  background: #F7F7F7;
+}
+
+.light ::-webkit-scrollbar-thumb {
+  background: #D9D9D9;
+  border-radius: 4px;
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: #BDBDBD;
+}
+
+/* Custom scrollbar — dark (preserved) */
+.dark ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.dark ::-webkit-scrollbar-track {
+  background: #050505;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #333333;
+  border-radius: 4px;
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #444444;
+}
+
+/* Three.js canvas */
+canvas {
+  outline: none;
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes zoom-in-95 {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes shimmer {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.animate-in {
+  animation: fade-in 0.2s ease-out, zoom-in-95 0.2s ease-out;
+}
+
+.animate-shimmer {
+  animation: shimmer 2s infinite linear;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 2s infinite ease-in-out;
+}
+
+/* Micro-interactions */
+button:active:not(:disabled) {
+  transform: scale(0.98);
+  transition: transform 0.08s ease;
+}
+
+/* Page transitions */
+.page-transition {
+  animation: fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
