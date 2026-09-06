@@ -315,6 +315,7 @@ async def list_students(
     stmt = (
         select(Student, User)
         .join(User, Student.user_id == User.id)
+        .options(selectinload(Student.program), selectinload(Student.department))
         .order_by(User.full_name.asc())
     )
     if q:
