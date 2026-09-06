@@ -256,9 +256,12 @@ export class ApiClient {
 
   private buildUrl(path: string): string {
     if (path.startsWith("http")) return path;
-    const cleanBase = this.baseURL.replace(/\/+$/, "");
+    const cleanBase = (this.baseURL || "http://localhost:8000/api/v1").replace(/\/+$/, "");
     const cleanPath = path.startsWith("/") ? path : `/${path}`;
-    return `${cleanBase}${cleanPath}`;
+    const rootBase = cleanBase.replace(/\/api\/v1\/?$/, "");
+    const subPath = cleanPath.replace(/^\/api\/v1/, "");
+    const normalizedSubPath = subPath.startsWith("/") ? subPath : `/${subPath}`;
+    return `${rootBase}/api/v1${normalizedSubPath}`;
   }
 
   get<T>(path: string, options: FetchOptions = {}): Promise<T> {
@@ -645,9 +648,12 @@ export const api = {
 
 export function getApiUrl(path: string): string {
   if (path.startsWith("http")) return path;
-  const cleanBase = API_BASE_URL.replace(/\/+$/, "");
+  const cleanBase = (API_BASE_URL || "http://localhost:8000/api/v1").replace(/\/+$/, "");
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
-  return `${cleanBase}${cleanPath}`;
+  const rootBase = cleanBase.replace(/\/api\/v1\/?$/, "");
+  const subPath = cleanPath.replace(/^\/api\/v1/, "");
+  const normalizedSubPath = subPath.startsWith("/") ? subPath : `/${subPath}`;
+  return `${rootBase}/api/v1${normalizedSubPath}`;
 }
 
 export { ApiError };
