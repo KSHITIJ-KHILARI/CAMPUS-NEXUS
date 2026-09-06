@@ -36,21 +36,22 @@ async def login(
     password = None
 
     try:
-        raw_body = await request.body()
-        if raw_body:
-            import json as _json
-            import urllib.parse as _urlparse
-            decoded = raw_body.decode("utf-8", errors="replace")
-            try:
-                data = _json.loads(decoded)
-                email = data.get("email") or data.get("username")
-                password = data.get("password")
-            except Exception:
-                parsed_form = _urlparse.parse_qs(decoded)
-                email = (parsed_form.get("username") or parsed_form.get("email") or [None])[0]
-                password = (parsed_form.get("password") or [None])[0]
-    except Exception as e:
-        logger.error(f"Error parsing login body: {e}")
+        # First attempt JSON body parsing
+        data = await request.json()
+        if isinstance(data, dict):
+            email = data.get("email") or data.get("username")
+            password = data.get("password")
+    except Exception:
+        pass
+
+    if not email or not password:
+        try:
+            # Fallback to form data parsing
+            form = await request.form()
+            email = form.get("username") or form.get("email")
+            password = form.get("password")
+        except Exception:
+            pass
 
     if not email or not password:
         raise HTTPException(
