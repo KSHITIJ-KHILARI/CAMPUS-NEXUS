@@ -73,8 +73,9 @@ async def login(
             detail="Inactive user account",
         )
 
-    access_token = create_access_token(subject=str(user.id), data={"role": str(user.role)})
-    refresh_tok = create_refresh_token(subject=str(user.id), data={"role": str(user.role)})
+    role_val = str(getattr(user.role, "value", user.role))
+    access_token = create_access_token(subject=str(user.id), data={"role": role_val})
+    refresh_tok = create_refresh_token(subject=str(user.id), data={"role": role_val})
 
     user_data = UserInDB.model_validate(user)
 
@@ -84,6 +85,7 @@ async def login(
         user=user_data,
         refresh_token=refresh_tok,
     )
+
 
 
 @router.get("/me", response_model=UserInDB, tags=["auth"])
