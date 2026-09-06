@@ -74,50 +74,66 @@ async def list_lost_found_items(
 
     if not type or type == "lost":
         stmt = (
-            select(LostItem, CampusLocation.name.label("location_name"))
+            select(
+                LostItem.id,
+                LostItem.name,
+                LostItem.description,
+                LostItem.category,
+                LostItem.status,
+                LostItem.reported_by_user_id,
+                CampusLocation.name.label("location_name"),
+            )
             .outerjoin(CampusLocation, LostItem.location_id == CampusLocation.id)
         )
         if q:
             stmt = stmt.where((LostItem.category.ilike(f"%{q}%")) | (LostItem.description.ilike(f"%{q}%")))
         result = await db.execute(stmt)
-        for li, loc_name in result.all():
-            cat_val = str(getattr(li.category, "value", li.category) or "electronics")
-            status_val = str(getattr(li.status, "value", li.status) or "lost")
+        for li_id, li_name, li_desc, li_cat, li_status, rep_user, loc_name in result.all():
+            cat_val = str(getattr(li_cat, "value", li_cat) or "electronics")
+            status_val = str(getattr(li_status, "value", li_status) or "lost")
             items_out.append(
                 LostFoundItemOut(
-                    id=str(li.id),
-                    title=li.name or f"{cat_val.capitalize()} Item",
-                    description=li.description,
+                    id=str(li_id),
+                    title=li_name or f"{cat_val.capitalize()} Item",
+                    description=li_desc,
                     category=cat_val,
                     location=loc_name or "Aurobindo Building",
                     type="lost",
                     status=status_val,
-                    reported_by=str(li.reported_by_user_id),
+                    reported_by=str(rep_user),
                     reported_at=datetime.utcnow(),
                 )
             )
 
     if not type or type == "found":
         stmt = (
-            select(FoundItem, CampusLocation.name.label("location_name"))
+            select(
+                FoundItem.id,
+                FoundItem.name,
+                FoundItem.description,
+                FoundItem.category,
+                FoundItem.status,
+                FoundItem.found_by_user_id,
+                CampusLocation.name.label("location_name"),
+            )
             .outerjoin(CampusLocation, FoundItem.location_id == CampusLocation.id)
         )
         if q:
             stmt = stmt.where((FoundItem.category.ilike(f"%{q}%")) | (FoundItem.description.ilike(f"%{q}%")))
         result = await db.execute(stmt)
-        for fi, loc_name in result.all():
-            cat_val = str(getattr(fi.category, "value", fi.category) or "electronics")
-            status_val = str(getattr(fi.status, "value", fi.status) or "unclaimed")
+        for fi_id, fi_name, fi_desc, fi_cat, fi_status, found_user, loc_name in result.all():
+            cat_val = str(getattr(fi_cat, "value", fi_cat) or "electronics")
+            status_val = str(getattr(fi_status, "value", fi_status) or "unclaimed")
             items_out.append(
                 LostFoundItemOut(
-                    id=str(fi.id),
-                    title=fi.name or f"{cat_val.capitalize()} Item",
-                    description=fi.description,
+                    id=str(fi_id),
+                    title=fi_name or f"{cat_val.capitalize()} Item",
+                    description=fi_desc,
                     category=cat_val,
                     location=loc_name or "Central Library",
                     type="found",
                     status=status_val,
-                    reported_by=str(fi.found_by_user_id),
+                    reported_by=str(found_user),
                     reported_at=datetime.utcnow(),
                 )
             )
