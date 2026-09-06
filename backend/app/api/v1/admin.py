@@ -1186,3 +1186,15 @@ async def admin_get_event(
         "status": e.status or "upcoming",
     }
 
+
+@router.post("/seed", tags=["admin"])
+async def trigger_seed_campus_data(
+    db: AsyncSession = Depends(get_current_db),
+    _: User = Depends(require_admin),
+):
+    """Trigger idempotent Somaiya campus data seeding (Admin only)."""
+    from app.core.seeder import seed_campus_data
+    await seed_campus_data(db)
+    return {"status": "success", "message": "Campus data successfully seeded"}
+
+
