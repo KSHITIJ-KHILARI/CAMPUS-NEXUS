@@ -18,6 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.api.v1.api import api_router
+from app.api.v1 import auth
 from app.core.websocket_routes import router as websocket_router
 from app.core.database import get_session, init_db
 from app.core.redis_client import is_redis_online, close_redis
@@ -103,17 +104,23 @@ def create_application() -> FastAPI:
 
     # CORS
     #
-    # Allow the deployed Campus NEXUS Vercel frontend.
+    # Allow local development origins and deployed Campus NEXUS Vercel frontends.
     cors_origins = list(settings.BACKEND_CORS_ORIGINS)
 
-    vercel_frontend_origin = "https://campus-nexus-seven.vercel.app"
+    known_vercel_origins = [
+        "https://campus-nexus-git-main-kstroy.vercel.app",
+        "https://campus-nexus-seven.vercel.app",
+        "https://campus-nexus.vercel.app",
+    ]
 
-    if vercel_frontend_origin not in cors_origins:
-        cors_origins.append(vercel_frontend_origin)
+    for origin in known_vercel_origins:
+        if origin not in cors_origins:
+            cors_origins.append(origin)
 
     application.add_middleware(
         CORSMiddleware,
         allow_origins=cors_origins,
+        allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
@@ -154,6 +161,7 @@ def create_application() -> FastAPI:
     # ----------------------------------------------------------------------- #
 
     application.include_router(api_router, prefix="/api/v1")
+    application.include_router(auth.router, prefix="/auth", tags=["auth-alias"])
     application.include_router(websocket_router)
 
     # ----------------------------------------------------------------------- #
