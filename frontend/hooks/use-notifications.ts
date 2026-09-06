@@ -70,6 +70,14 @@ export function useNotifications() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.notifications.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["notifications", "unread-count"] });
+    },
+  });
+
   const markAsRead = useCallback(
     (id: string) => {
       markAsReadMutation.mutate(id);
@@ -83,6 +91,14 @@ export function useNotifications() {
     setUnreadCount(0);
   }, [markAllReadMutation]);
 
+  const deleteNotification = useCallback(
+    (id: string) => {
+      deleteMutation.mutate(id);
+      setUnreadCount((c) => Math.max(0, c - 1));
+    },
+    [deleteMutation]
+  );
+
   return {
     notifications: (notifications ?? []) as NotificationItem[],
     unreadCount,
@@ -91,5 +107,6 @@ export function useNotifications() {
     refetch,
     markAsRead,
     markAllRead,
+    deleteNotification,
   };
 }

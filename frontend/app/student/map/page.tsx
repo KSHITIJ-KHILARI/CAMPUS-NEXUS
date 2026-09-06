@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Navigation, Clock, AlertTriangle, CheckCircle, Sparkles } from "lucide-react";
+import { MapPin, Navigation, Clock, AlertTriangle, CheckCircle, Sparkles, Layers } from "lucide-react";
 import { BackButton } from "@/components/ui/back-button";
 import { apiClient } from "@/lib/api-client";
 
@@ -34,12 +34,12 @@ export default function MapPage() {
         const campusLocations = data?.campus_locations || [];
         const mapped: Location[] = campusLocations.map((loc: any) => ({
           id: String(loc.id),
-          name: loc.name || loc.building_name || "Unknown Location",
+          name: loc.name || loc.building_name || "Campus Location",
           room: loc.room_number || loc.room || "",
           floor: loc.floor || 1,
-          type: loc.type || loc.location_type || "building",
+          type: (loc.location_type || loc.type || "building").toLowerCase(),
           crowd: loc.crowd || loc.density || "moderate",
-          travel_time_minutes: loc.travel_time_minutes || 10,
+          travel_time_minutes: loc.travel_time_minutes || 8,
         }));
         setLocations(mapped);
       } catch (err: any) {
@@ -51,7 +51,45 @@ export default function MapPage() {
     loadLocations();
   }, []);
 
-  const filtered = filter ? locations.filter((loc) => loc.type === filter) : locations;
+  const filtered = filter
+    ? locations.filter((loc) => {
+        const t = (loc.type || "").toLowerCase();
+        if (filter === "building") {
+          return (
+            t === "building" ||
+            t === "academic" ||
+            t === "classroom" ||
+            t === "department" ||
+            loc.name.toLowerCase().includes("building") ||
+            loc.name.toLowerCase().includes("block")
+          );
+        }
+        if (filter === "facility") {
+          return (
+            t === "facility" ||
+            t === "library" ||
+            t === "admin" ||
+            t === "sports" ||
+            t === "auditorium" ||
+            t === "service" ||
+            loc.name.toLowerCase().includes("library") ||
+            loc.name.toLowerCase().includes("complex")
+          );
+        }
+        if (filter === "food") {
+          return (
+            t === "food" ||
+            t === "dining" ||
+            t === "canteen" ||
+            t === "cafeteria" ||
+            loc.name.toLowerCase().includes("canteen") ||
+            loc.name.toLowerCase().includes("point") ||
+            loc.name.toLowerCase().includes("nescafe")
+          );
+        }
+        return t.includes(filter);
+      })
+    : locations;
 
   if (loading) {
     return (
@@ -82,6 +120,10 @@ export default function MapPage() {
       {/* Back Button */}
       <div className="flex items-center justify-between">
         <BackButton label="Back to Student Dashboard" fallbackPath="/student/dashboard" />
+        <Badge variant="secondary" className="gap-1 text-xs">
+          <Layers className="w-3 h-3 text-red-500" />
+          {locations.length} Campus Locations
+        </Badge>
       </div>
 
       <div>
@@ -89,14 +131,14 @@ export default function MapPage() {
         <p className="text-gray-400">Real-time geospatial campus navigation with elevator status delay compensation</p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button
           variant={filter === null ? "default" : "outline"}
           size="sm"
           onClick={() => setFilter(null)}
           className={filter === null ? "bg-red-600 text-white" : "border-white/10 text-gray-300"}
         >
-          All Locations
+          All Locations ({locations.length})
         </Button>
         <Button
           variant={filter === "building" ? "default" : "outline"}
@@ -139,7 +181,7 @@ export default function MapPage() {
                   <Clock className="w-4 h-4 text-blue-400" />
                   <div>
                     <span className="text-gray-400 block">Est. Walking Time</span>
-                    <span className="font-semibold text-white">{navTarget.travel_time_minutes || 10} Minutes</span>
+                    <span className="font-semibold text-white">{navTarget.travel_time_minutes || 8} Minutes</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -191,7 +233,7 @@ export default function MapPage() {
                 </div>
                 <Badge
                   variant={
-                    loc.crowd === "high"
+                    loc.crowd === "high" || loc.crowd === "very_high"
                       ? "danger"
                       : loc.crowd === "moderate"
                       ? "warning"

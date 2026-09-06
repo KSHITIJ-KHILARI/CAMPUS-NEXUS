@@ -158,3 +158,25 @@ async def mark_notification_read(
     notification.read = True
     await db.commit()
     return {"message": "Marked as read", "id": notification_id}
+
+
+@router.delete("/{notification_id}", tags=["notifications"])
+async def delete_notification(
+    notification_id: str,
+    db: AsyncSession = Depends(get_current_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Delete a single notification for the current user."""
+    result = await db.execute(
+        select(NotificationModel).where(
+            NotificationModel.id == notification_id,
+            NotificationModel.recipient_id == current_user.id,
+        )
+    )
+    notification = result.scalar_one_or_none()
+    if not notification:
+        raise HTTPException(status_code=404, detail="Notification not found")
+
+    await db.delete(notification)
+    await db.commit()
+    return {"message": "Notification deleted", "id": notification_id}

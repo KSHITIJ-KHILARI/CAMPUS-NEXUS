@@ -41,6 +41,25 @@ class LostFoundItemOut(BaseModel):
         from_attributes = True
 
 
+def _get_item_location(item: Any, default: str = "Central Library") -> str:
+    """Extract human-readable location from item relationships."""
+    if hasattr(item, "location") and item.location and getattr(item.location, "name", None):
+        return item.location.name
+    if hasattr(item, "room") and item.room and getattr(item.room, "room_number", None):
+        return f"Room {item.room.room_number}"
+    return default
+
+
+async def _resolve_location_id(db: AsyncSession, location_name: str) -> Optional[int]:
+    """Find campus location id by name."""
+    from app.models.campus_location import CampusLocation
+    if not location_name:
+        return None
+    res = await db.execute(select(CampusLocation).where(CampusLocation.name.ilike(f"%{location_name}%")))
+    loc = res.scalars().first()
+    return loc.id if loc else None
+
+
 @router.get("/items", response_model=List[LostFoundItemOut], tags=["lost-found"])
 async def list_lost_found_items(
     type: Optional[str] = Query(None),
@@ -64,7 +83,7 @@ async def list_lost_found_items(
                     title=li.name or f"{li.category.capitalize()} Item",
                     description=li.description,
                     category=li.category or "electronics",
-                    location="Campus Location",
+                    location=_get_item_location(li, "Aurobindo Building"),
                     type="lost",
                     status=str(li.status or "lost"),
                     reported_by=str(li.reported_by_user_id),
@@ -84,7 +103,7 @@ async def list_lost_found_items(
                     title=fi.name or f"{fi.category.capitalize()} Item",
                     description=fi.description,
                     category=fi.category or "electronics",
-                    location="Campus Location",
+                    location=_get_item_location(fi, "Central Library"),
                     type="found",
                     status=str(fi.status or "unclaimed"),
                     reported_by=str(fi.found_by_user_id),
@@ -112,7 +131,7 @@ async def get_item_details(
                 title=li.name or f"{li.category.capitalize()} Item",
                 description=li.description,
                 category=li.category or "electronics",
-                location="Campus Location",
+                location=_get_item_location(li, "Aurobindo Building"),
                 type="lost",
                 status=str(li.status or "lost"),
                 reported_by=str(li.reported_by_user_id),
@@ -127,7 +146,7 @@ async def get_item_details(
                 title=fi.name or f"{fi.category.capitalize()} Item",
                 description=fi.description,
                 category=fi.category or "electronics",
-                location="Campus Location",
+                location=_get_item_location(fi, "Central Library"),
                 type="found",
                 status=str(fi.status or "unclaimed"),
                 reported_by=str(fi.found_by_user_id),

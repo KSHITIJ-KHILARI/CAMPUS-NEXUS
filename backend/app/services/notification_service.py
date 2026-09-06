@@ -77,6 +77,15 @@ async def get_all_student_user_ids(db: AsyncSession) -> list[uuid.UUID]:
     return [row[0] for row in res.all()]
 
 
+async def get_all_faculty_user_ids(db: AsyncSession) -> list[uuid.UUID]:
+    """Return user IDs for every active faculty member in the system."""
+    from app.models.faculty import Faculty
+    res = await db.execute(
+        select(User.id).join(Faculty, Faculty.user_id == User.id).where(User.is_active == True)
+    )
+    return [row[0] for row in res.all()]
+
+
 async def get_all_admin_user_ids(db: AsyncSession) -> list[uuid.UUID]:
     """Return user IDs for every active admin (including super_admins)."""
     res = await db.execute(
@@ -98,16 +107,18 @@ async def notify_students_new_event(
     location: str,
     starts_at: Optional[str] = None,
 ) -> None:
-    """Notify every active student about a newly created event."""
+    """Notify active students and faculty about a newly created event."""
     student_ids = await get_all_student_user_ids(db)
+    faculty_ids = await get_all_faculty_user_ids(db)
+    all_ids = list(set(student_ids + faculty_ids))
     when = f" on {starts_at}" if starts_at else ""
     reason = (
         f"New campus event: '{event_title}' at {location}{when}. "
-        f"Register from the events page."
+        f"Check details on the events page."
     )
     await bulk_create_notifications(
         db,
-        recipient_ids=student_ids,
+        recipient_ids=all_ids,
         event="event_created",
         reason=reason,
         priority="medium",

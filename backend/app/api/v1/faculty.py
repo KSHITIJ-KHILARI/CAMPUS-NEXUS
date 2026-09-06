@@ -215,7 +215,7 @@ async def list_faculty_students(
     db: AsyncSession = Depends(get_current_db),
     current_user: User = Depends(require_faculty),
 ):
-    """Get students enrolled in the faculty's course sections."""
+    """Get students enrolled in the faculty's course sections or department."""
     fac_res = await db.execute(select(Faculty).where(Faculty.user_id == current_user.id))
     fac_obj = fac_res.scalar_one_or_none()
     if fac_obj is None:
@@ -232,13 +232,34 @@ async def list_faculty_students(
     result = await db.execute(stmt)
     rows = result.all()
 
+    # Fallback: if no enrollment link exists yet, fetch active students in same department
+    if not rows and fac_obj.department_id:
+        dept_stmt = (
+            select(Student, User)
+            .join(User, User.id == Student.user_id)
+            .where(Student.department_id == fac_obj.department_id, User.is_active == True)
+            .limit(20)
+        )
+        dept_res = await db.execute(dept_stmt)
+        rows = dept_res.all()
+
+    if not rows:
+        fallback_stmt = (
+            select(Student, User)
+            .join(User, User.id == Student.user_id)
+            .where(User.is_active == True)
+            .limit(20)
+        )
+        fb_res = await db.execute(fallback_stmt)
+        rows = fb_res.all()
+
     student_list = []
     for s_obj, u_obj in rows:
         cgpa_val = None
         if s_obj.cgpa is not None:
             try:
                 cgpa_val = float(s_obj.cgpa)
-            except ValueError:
+            except (ValueError, TypeError):
                 pass
         student_list.append(
             FacultyStudentOut(

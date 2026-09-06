@@ -44,22 +44,30 @@ export default function StudentDashboard() {
   const [isCommandOpen, setIsCommandOpen] = useState(false);
   const [selectedBook, setSelectedBook] = useState<any>(null);
 
+  const [rushTelemetry, setRushTelemetry] = useState<any[]>([]);
+
   useEffect(() => {
     async function loadData() {
       try {
-        const nc: any = await api.schedule.getNextClass();
-        if (nc && nc.course_name) {
+        const [nc, rush] = await Promise.all([
+          api.schedule.getNextClass().catch(() => null),
+          api.location.getRush().catch(() => []),
+        ]);
+        if (nc && (nc as any).course_name) {
           setNextClassData({
-            subject: nc.course_name,
-            room: nc.room || "CSB 302",
-            building: nc.building || "Computer Science Building",
-            startTime: nc.start_time || "2:00 PM",
-            startsIn: nc.starts_in_minutes || 20,
+            subject: (nc as any).course_name,
+            room: (nc as any).room || "CSB 302",
+            building: (nc as any).building || "Computer Science Building",
+            startTime: (nc as any).start_time || "2:00 PM",
+            startsIn: (nc as any).starts_in_minutes || 20,
             travelTime: 14,
             recommendedLeave: "1:42 PM",
             status: "warning",
             statusMessage: "CSB Lift 2 under maintenance (Use stairs or Lift 1)",
           });
+        }
+        if (rush && Array.isArray(rush)) {
+          setRushTelemetry(rush);
         }
       } catch {
         // Fall back to demo data; no user-facing error needed on dashboard

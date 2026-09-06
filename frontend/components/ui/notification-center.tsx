@@ -24,6 +24,7 @@ interface NotificationContextType {
   isLoading: boolean
   markAsRead: (id: string) => void
   markAllRead: () => void
+  deleteNotification: (id: string) => void
   refetch: () => void
 }
 
@@ -36,6 +37,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     isLoading,
     markAsRead,
     markAllRead,
+    deleteNotification,
     refetch,
   } = useNotificationsApi()
 
@@ -47,6 +49,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         isLoading: !!isLoading,
         markAsRead,
         markAllRead: () => markAllRead(),
+        deleteNotification,
         refetch,
       }}
     >

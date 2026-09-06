@@ -579,6 +579,7 @@ export const api = {
     getUnread: () => apiClient.get<{ unread: number; count: number }>("/notifications/unread"),
     markAsRead: (id: string) => apiClient.post(`/notifications/${id}/read`),
     markAllRead: () => apiClient.post("/notifications/read-all"),
+    delete: (id: string) => apiClient.delete(`/notifications/${id}`),
     create: (data: { recipient_id?: string; event: string; reason: string; priority?: string; data?: Record<string, unknown> }) =>
       apiClient.post<any>("/notifications", data),
   },
