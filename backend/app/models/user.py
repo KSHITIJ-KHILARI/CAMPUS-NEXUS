@@ -47,31 +47,27 @@ class User(Base):
     department_id: Mapped[int | None] = mapped_column(
         ForeignKey("departments.id"), nullable=True
     )
-    faculty_id: Mapped[int | None] = mapped_column(
-        ForeignKey("faculties.id"), nullable=True
-    )
-    student_id: Mapped[int | None] = mapped_column(
-        ForeignKey("students.id"), nullable=True
-    )
+    faculty_id: Mapped[int | None] = mapped_column(nullable=True)
+    student_id: Mapped[int | None] = mapped_column(nullable=True)
     last_login_at: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # --- Relationships ---
     student_profile: Mapped["Student | None"] = relationship(
         "Student",
         back_populates="user",
-        foreign_keys="Student.user_id",
+        primaryjoin="User.id==Student.user_id",
         lazy="select",
     )
     faculty_profile: Mapped["Faculty | None"] = relationship(
         "Faculty",
         back_populates="user",
-        foreign_keys="Faculty.user_id",
+        primaryjoin="User.id==Faculty.user_id",
         lazy="select",
     )
     admin_profile: Mapped["Admin | None"] = relationship(
         "Admin",
         back_populates="user",
-        foreign_keys="Admin.user_id",
+        primaryjoin="User.id==Admin.user_id",
         lazy="select",
     )
     department: Mapped["Department | None"] = relationship(
