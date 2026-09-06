@@ -35,21 +35,22 @@ async def login(
     email = None
     password = None
 
-    content_type = request.headers.get("content-type", "")
-    if "application/json" in content_type:
-        try:
-            body = await request.json()
-            email = body.get("email") or body.get("username")
-            password = body.get("password")
-        except Exception:
-            pass
-    else:
-        try:
-            form = await request.form()
-            email = form.get("username") or form.get("email")
-            password = form.get("password")
-        except Exception:
-            pass
+    try:
+        raw_body = await request.body()
+        if raw_body:
+            import json as _json
+            import urllib.parse as _urlparse
+            decoded = raw_body.decode("utf-8", errors="replace")
+            try:
+                data = _json.loads(decoded)
+                email = data.get("email") or data.get("username")
+                password = data.get("password")
+            except Exception:
+                parsed_form = _urlparse.parse_qs(decoded)
+                email = (parsed_form.get("username") or parsed_form.get("email") or [None])[0]
+                password = (parsed_form.get("password") or [None])[0]
+    except Exception as e:
+        logger.error(f"Error parsing login body: {e}")
 
     if not email or not password:
         raise HTTPException(
@@ -57,7 +58,8 @@ async def login(
             detail="Email/username and password are required",
         )
 
-    result = await db.execute(select(User).where(User.email == str(email)))
+    clean_email = str(email).strip()
+    result = await db.execute(select(User).where(User.email.ilike(clean_email)))
     user = result.scalar_one_or_none()
 
     if not user or not verify_password(str(password), user.hashed_password):

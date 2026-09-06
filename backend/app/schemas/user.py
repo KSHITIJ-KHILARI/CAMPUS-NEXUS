@@ -9,8 +9,8 @@ import uuid
 class UserBase(BaseModel):
     """Base user schema."""
     email: EmailStr
-    full_name: str
-    role: str  # student, faculty, admin
+    full_name: Optional[str] = None
+    role: Optional[str] = "student"  # student, faculty, admin
 
 
 class UserCreate(UserBase):
