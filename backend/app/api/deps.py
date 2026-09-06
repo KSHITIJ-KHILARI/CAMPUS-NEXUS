@@ -106,8 +106,12 @@ class RoleRequired:
         self.allowed_roles = allowed_roles
 
     def __call__(self, current_user: Annotated[User, Depends(get_current_active_user)]) -> User:
-        user_role_str = str(current_user.role)
-        if user_role_str not in self.allowed_roles:
+        user_role_str = str(getattr(current_user.role, "value", current_user.role)).lower()
+        if user_role_str.startswith("userrole."):
+            user_role_str = user_role_str.split(".", 1)[1]
+        
+        allowed_normalized = [str(getattr(r, "value", r)).lower() for r in self.allowed_roles]
+        if user_role_str not in allowed_normalized:
             logger.warning(
                 "[AUTH_FAILURE] Reason: ROLE_NOT_ALLOWED — User %s with role '%s' attempted to access route requiring %s",
                 current_user.email, user_role_str, self.allowed_roles

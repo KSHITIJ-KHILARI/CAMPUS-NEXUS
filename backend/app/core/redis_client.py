@@ -28,8 +28,8 @@ def get_redis() -> redis.Redis:
             settings.REDIS_URL,
             max_connections=settings.REDIS_MAX_CONNECTIONS,
             decode_responses=True,
-            socket_connect_timeout=2,
-            socket_timeout=2,
+            socket_connect_timeout=0.5,
+            socket_timeout=0.5,
             retry_on_timeout=False,
         )
     return _redis_client
