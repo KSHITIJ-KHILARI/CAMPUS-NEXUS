@@ -298,7 +298,7 @@ campus-nexus/
 
 ## Contributors
 
-Built with pride for Somaiya Vidyavihar University by:
+Built with pride by:
 
 - **Kshitij**
 - **Harshit**
