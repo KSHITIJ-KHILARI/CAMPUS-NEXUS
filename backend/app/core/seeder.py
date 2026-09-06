@@ -689,6 +689,7 @@ async def seed_campus_data(db: AsyncSession) -> None:
             for cp in range(1, bd["total"] + 1):
                 is_borrowed = cp > bd["avail"]
                 db.add(LibraryBookCopy(
+                    id=f"{bk.id}-copy-{cp}",
                     book_id=bk.id,
                     copy_number=cp,
                     status="borrowed" if is_borrowed else "available",
@@ -699,49 +700,54 @@ async def seed_campus_data(db: AsyncSession) -> None:
     ev_res = await db.execute(select(Event))
     if not ev_res.scalars().all():
         loc_gargi = loc_map.get("Gargi Plaza")
-        loc_id = loc_gargi.id if loc_gargi else 1
-        events_data = [
-            {
-                "id": "evt_hackathon_2026",
-                "title": "Somaiya Annual Hackathon 2026",
-                "desc": "36-Hour National Campus Hackathon organized by K. J. Somaiya College of Engineering.",
-                "type": "hackathon",
-                "loc": loc_id,
-                "organizer": "Student Activity Council",
-                "max": 250,
-                "reg": 182,
-                "status": "upcoming",
-                "start": datetime.utcnow() + timedelta(days=2),
-                "end": datetime.utcnow() + timedelta(days=4),
-            },
-            {
-                "id": "evt_ai_symposium",
-                "title": "AI & Digital Twin Symposium",
-                "desc": "Industry keynote and student demonstrations on spatial campus computing and smart infrastructure.",
-                "type": "seminar",
-                "loc": loc_id,
-                "organizer": "Department of Computer Applications",
-                "max": 150,
-                "reg": 115,
-                "status": "upcoming",
-                "start": datetime.utcnow() + timedelta(days=5),
-                "end": datetime.utcnow() + timedelta(days=5, hours=4),
-            },
-        ]
-        for ed in events_data:
-            db.add(Event(
-                id=ed["id"],
-                title=ed["title"],
-                description=ed["desc"],
-                event_type=ed["type"],
-                location_id=ed["loc"],
-                organizer=ed["organizer"],
-                max_participants=ed["max"],
-                registrations=ed["reg"],
-                status=ed["status"],
-                start_time=ed["start"],
-                end_time=ed["end"],
-            ))
+        if not loc_gargi:
+            any_loc_res = await db.execute(select(CampusLocation).limit(1))
+            loc_gargi = any_loc_res.scalars().first()
+        loc_id = loc_gargi.id if loc_gargi else None
+        if loc_id:
+            events_data = [
+                {
+                    "id": "evt_hackathon_2026",
+                    "title": "Somaiya Annual Hackathon 2026",
+                    "desc": "36-Hour National Campus Hackathon organized by K. J. Somaiya College of Engineering.",
+                    "type": "hackathon",
+                    "loc": loc_id,
+                    "organizer": "Student Activity Council",
+                    "max": 250,
+                    "reg": 182,
+                    "status": "upcoming",
+                    "start": datetime.utcnow() + timedelta(days=2),
+                    "end": datetime.utcnow() + timedelta(days=4),
+                },
+                {
+                    "id": "evt_ai_symposium",
+                    "title": "AI & Digital Twin Symposium",
+                    "desc": "Industry keynote and student demonstrations on spatial campus computing and smart infrastructure.",
+                    "type": "seminar",
+                    "loc": loc_id,
+                    "organizer": "Department of Computer Applications",
+                    "max": 150,
+                    "reg": 115,
+                    "status": "upcoming",
+                    "start": datetime.utcnow() + timedelta(days=5),
+                    "end": datetime.utcnow() + timedelta(days=5, hours=4),
+                },
+            ]
+            for ed in events_data:
+                db.add(Event(
+                    id=ed["id"],
+                    title=ed["title"],
+                    description=ed["desc"],
+                    event_type=ed["type"],
+                    location_id=ed["loc"],
+                    organizer=ed["organizer"],
+                    max_participants=ed["max"],
+                    registrations=ed["reg"],
+                    status=ed["status"],
+                    start_time=ed["start"],
+                    end_time=ed["end"],
+                ))
+
 
     # 14. Notifications
     notif_res = await db.execute(select(Notification).where(Notification.recipient_id == student_user.id))

@@ -6,21 +6,23 @@ specialisations that share the same table via single-table-inheritance
 or simple foreign-key relationships depending on the domain need.
 """
 
+import enum
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String
+from sqlalchemy import Boolean, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.database import Base
 
 
-class UserRole(str, Enum):
+class UserRole(str, enum.Enum):
     """Enumerated user roles for RBAC."""
 
     STUDENT = "student"
     FACULTY = "faculty"
     ADMIN = "admin"
     SUPER_ADMIN = "super_admin"
+
 
 
 class User(Base):

@@ -1193,8 +1193,14 @@ async def trigger_seed_campus_data(
     _: User = Depends(require_admin),
 ):
     """Trigger idempotent Somaiya campus data seeding (Admin only)."""
-    from app.core.seeder import seed_campus_data
-    await seed_campus_data(db)
-    return {"status": "success", "message": "Campus data successfully seeded"}
+    import traceback
+    try:
+        from app.core.seeder import seed_campus_data
+        await seed_campus_data(db)
+        return {"status": "success", "message": "Campus data successfully seeded"}
+    except Exception as exc:
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail={"error": str(exc), "traceback": tb})
+
 
 
