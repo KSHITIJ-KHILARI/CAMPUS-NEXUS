@@ -61,7 +61,7 @@ async def list_vacant_rooms(
     """Find currently vacant classrooms and laboratories for study or meetings (Phases 28 & 29)."""
     stmt = (
         select(RoomModel, BuildingModel.name.label("building_name"))
-        .join(BuildingModel, RoomModel.building_id == BuildingModel.id)
+        .outerjoin(BuildingModel, RoomModel.building_id == BuildingModel.id)
         .where(RoomModel.capacity >= min_capacity)
     )
     if room_type:
@@ -74,16 +74,17 @@ async def list_vacant_rooms(
 
     vacant_list = []
     for rm, b_name in rows:
+        b_name_str = b_name or "Somaiya Campus"
         vacant_list.append({
             "id": str(rm.id),
-            "name": rm.name or f"{b_name} {rm.room_number}",
+            "name": rm.name or f"{b_name_str} {rm.room_number}",
             "room_number": rm.room_number,
-            "building": b_name,
-            "building_id": rm.building_id,
+            "building": b_name_str,
+            "building_id": rm.building_id or 1,
             "floor": rm.floor_id or 1,
-            "capacity": rm.capacity,
+            "capacity": rm.capacity or 40,
             "type": rm.room_type or "classroom",
-            "is_accessible": rm.is_accessible,
+            "is_accessible": rm.is_accessible if rm.is_accessible is not None else True,
             "status": "available",
             "available_until": "End of Day",
         })
