@@ -67,10 +67,12 @@ async def lifespan(application: FastAPI):
                 "environment variables."
             )
 
-    # Initialize database tables in development
-    if settings.is_development:
+    # Initialize database tables and ensure demo data exists on startup
+    try:
         await init_db()
-        logger.info("Database tables initialized")
+        logger.info("Database tables and demo accounts initialized successfully")
+    except Exception as exc:
+        logger.error("Database initialization notice: %s", exc)
 
     yield
 

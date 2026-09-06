@@ -136,8 +136,65 @@ async def get_session() -> AsyncSession:
 
 
 async def init_db() -> None:
-    """Initialise the database — can be used for seeding or table creation."""
+    """Initialise the database — create tables and ensure demo users are seeded."""
     async with engine.begin() as conn:
-        # Only use create_all in development; in production use alembic.
-        if settings.is_development:
-            await conn.run_sync(Base.metadata.create_all)
+        await conn.run_sync(Base.metadata.create_all, checkfirst=True)
+
+    # Ensure demo accounts and showcase campus data are seeded
+    from app.core.security import hash_password
+    from app.models.user import User, UserRole
+    from sqlalchemy.future import select
+
+    demo_users = [
+        {
+            "id": uuid.UUID("11111111-1111-1111-1111-111111111111"),
+            "email": "student@somaiya.edu",
+            "full_name": "Arjun Mehta",
+            "role": UserRole.STUDENT,
+        },
+        {
+            "id": uuid.UUID("22222222-2222-2222-2222-222222222222"),
+            "email": "faculty@somaiya.edu",
+            "full_name": "Dr. Priya Sharma",
+            "role": UserRole.FACULTY,
+        },
+        {
+            "id": uuid.UUID("33333333-3333-3333-3333-333333333333"),
+            "email": "admin@somaiya.edu",
+            "full_name": "Campus Administrator",
+            "role": UserRole.ADMIN,
+        },
+        {
+            "id": uuid.UUID("44444444-4444-4444-4444-444444444444"),
+            "email": "diya.shah@somaiya.edu",
+            "full_name": "Diya Shah",
+            "role": UserRole.STUDENT,
+        },
+        {
+            "id": uuid.UUID("55555555-5555-5555-5555-555555555555"),
+            "email": "rajesh.kumar@somaiya.edu",
+            "full_name": "Dr. Rajesh Kumar",
+            "role": UserRole.FACULTY,
+        },
+    ]
+
+    async with async_session_factory() as session:
+        for u in demo_users:
+            res = await session.execute(select(User).where(User.email == u["email"]))
+            existing = res.scalar_one_or_none()
+            if not existing:
+                existing = User(
+                    id=u["id"],
+                    email=u["email"],
+                    hashed_password=hash_password("demo123"),
+                    full_name=u["full_name"],
+                    role=u["role"],
+                    is_active=True,
+                    is_verified=True,
+                )
+                session.add(existing)
+            else:
+                existing.hashed_password = hash_password("demo123")
+                existing.is_active = True
+                existing.is_verified = True
+        await session.commit()
