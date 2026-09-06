@@ -32,29 +32,29 @@ class Building(Base):
     floors: Mapped[list["Floor"]] = relationship(
         "Floor",
         back_populates="building",
-        lazy="selectin",
+        lazy="select",
         cascade="all, delete-orphan",
     )
     rooms: Mapped[list["Room"]] = relationship(
         "Room",
         back_populates="building",
-        lazy="selectin",
+        lazy="select",
         cascade="all, delete-orphan",
     )
     facilities: Mapped[list["Facility"]] = relationship(
         "Facility",
         back_populates="building",
-        lazy="selectin",
+        lazy="select",
         cascade="all, delete-orphan",
     )
     lifts: Mapped[list["Lift"]] = relationship(
         "Lift",
         back_populates="building",
-        lazy="selectin",
+        lazy="select",
         cascade="all, delete-orphan",
     )
     departments: Mapped[list["Department"]] = relationship(
         "Department",
         back_populates="building",
-        lazy="selectin",
+        lazy="select",
     )

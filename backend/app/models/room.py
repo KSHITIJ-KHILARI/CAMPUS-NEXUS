@@ -65,42 +65,42 @@ class Room(Base):
     building: Mapped["Building"] = relationship(
         "Building",
         back_populates="rooms",
-        lazy="selectin",
+        lazy="select",
     )
     floor: Mapped["Floor | None"] = relationship(
         "Floor",
         back_populates="rooms",
-        lazy="selectin",
+        lazy="select",
     )
     classroom: Mapped["Classroom | None"] = relationship(
         "Classroom",
         back_populates="room",
         uselist=False,
-        lazy="selectin",
+        lazy="select",
     )
     laboratory: Mapped["Laboratory | None"] = relationship(
         "Laboratory",
         back_populates="room",
         uselist=False,
-        lazy="selectin",
+        lazy="select",
     )
     equipment: Mapped[list["Equipment"]] = relationship(
         "Equipment",
         back_populates="room",
-        lazy="selectin",
+        lazy="select",
     )
     bookings: Mapped[list["RoomBooking"]] = relationship(
         "RoomBooking",
         back_populates="room",
-        lazy="selectin",
+        lazy="select",
     )
     class_sessions: Mapped[list["ClassSession"]] = relationship(
         "ClassSession",
         back_populates="room",
-        lazy="selectin",
+        lazy="select",
     )
     crowd_reports: Mapped[list["CrowdReport"]] = relationship(
         "CrowdReport",
         back_populates="room",
-        lazy="selectin",
+        lazy="select",
     )
