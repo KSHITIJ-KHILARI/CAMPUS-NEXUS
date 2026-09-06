@@ -13,8 +13,12 @@ export const UNIVERSITY_SHORT_NAME = "SVU";
 export const APP_NAME = "CAMPUS NEXUS";
 export const APP_TAGLINE = "AI-Powered Campus Intelligence Platform";
 
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+function normalizeApiBaseUrl(raw?: string): string {
+  const base = (raw || "http://localhost:8000/api/v1").replace(/\/+$/, "");
+  return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
+}
+
+export const API_BASE_URL = normalizeApiBaseUrl(process.env.NEXT_PUBLIC_API_URL);
 export const WS_BASE_URL =
   process.env.NEXT_PUBLIC_WS_URL || "wss://ws.campus-nexus.somaiya.edu";
 

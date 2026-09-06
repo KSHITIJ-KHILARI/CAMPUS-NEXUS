@@ -256,7 +256,9 @@ export class ApiClient {
 
   private buildUrl(path: string): string {
     if (path.startsWith("http")) return path;
-    return `${this.baseURL}${path.startsWith("/") ? "" : "/"}${path}`;
+    const cleanBase = this.baseURL.replace(/\/+$/, "");
+    const cleanPath = path.startsWith("/") ? path : `/${path}`;
+    return `${cleanBase}${cleanPath}`;
   }
 
   get<T>(path: string, options: FetchOptions = {}): Promise<T> {
@@ -643,7 +645,9 @@ export const api = {
 
 export function getApiUrl(path: string): string {
   if (path.startsWith("http")) return path;
-  return `${API_BASE_URL}${path.startsWith("/") ? "" : "/"}${path}`;
+  const cleanBase = API_BASE_URL.replace(/\/+$/, "");
+  const cleanPath = path.startsWith("/") ? path : `/${path}`;
+  return `${cleanBase}${cleanPath}`;
 }
 
 export { ApiError };
