@@ -60,34 +60,34 @@ class User(Base):
         "Student",
         back_populates="user",
         foreign_keys="Student.user_id",
-        lazy="selectin",
+        lazy="select",
     )
     faculty_profile: Mapped["Faculty | None"] = relationship(
         "Faculty",
         back_populates="user",
         foreign_keys="Faculty.user_id",
-        lazy="selectin",
+        lazy="select",
     )
     admin_profile: Mapped["Admin | None"] = relationship(
         "Admin",
         back_populates="user",
         foreign_keys="Admin.user_id",
-        lazy="selectin",
+        lazy="select",
     )
     department: Mapped["Department | None"] = relationship(
         "Department",
         back_populates="users",
-        lazy="selectin",
+        lazy="select",
     )
     notifications: Mapped[list["Notification"]] = relationship(
         "Notification",
         back_populates="user",
-        lazy="selectin",
+        lazy="select",
     )
     audit_logs: Mapped[list["AuditLog"]] = relationship(
         "AuditLog",
         back_populates="user",
-        lazy="selectin",
+        lazy="select",
     )
 
     __table_args__ = (
