@@ -139,7 +139,7 @@ export default function FacultyAvailabilityPage() {
         <Card className="p-6 border-white/10">
           <h3 className="font-bold text-white mb-4">Weekly Office Hours</h3>
           <div className="space-y-2">
-            {availability.available_slots.map((slot, idx) => (
+            {availability.available_slots?.map((slot, idx) => (
               <div
                 key={idx}
                 className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5"

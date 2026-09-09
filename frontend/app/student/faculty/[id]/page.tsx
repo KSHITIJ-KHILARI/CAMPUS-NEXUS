@@ -154,7 +154,7 @@ export default function StudentFacultyDetailPage({ params }: { params: { id: str
             <Calendar className="h-5 w-5 text-red-400" /> Today&apos;s Schedule
           </h3>
           <div className="space-y-3">
-            {faculty.schedule_today.map((sess: any, idx: number) => (
+            {faculty.schedule_today?.map((sess: any, idx: number) => (
               <div key={idx} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
                 <div>
                   <p className="text-sm text-white font-medium">{sess.course}</p>
@@ -175,7 +175,7 @@ export default function StudentFacultyDetailPage({ params }: { params: { id: str
             <Clock className="h-5 w-5 text-blue-400" /> Office Hours
           </h3>
           <div className="space-y-2">
-            {faculty.available_slots.map((slot, idx) => (
+            {faculty.available_slots?.map((slot: any, idx: number) => (
               <div key={idx} className="flex items-center justify-between text-sm text-gray-300 p-3 rounded-xl bg-white/5 border border-white/5">
                 <span className="font-medium">{slot.day}</span>
                 <span>

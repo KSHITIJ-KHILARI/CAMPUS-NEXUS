@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,6 +29,7 @@ export default function StudentEventsPage() {
   const [errorMsg, setErrorMsg] = useState("");
   const [actionMsg, setActionMsg] = useState("");
   const [actionError, setActionError] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const fetchEvents = async () => {
     setLoading(true);
@@ -98,7 +99,7 @@ export default function StudentEventsPage() {
     setActionMsg("");
     setActionError("");
     try {
-      await apiClient.delete(`/events/${id}/registration`);
+      await api.events.cancelRegistration(id);
       setEvents((prev) =>
         prev.map((e) =>
           e.id === id
@@ -120,8 +121,17 @@ export default function StudentEventsPage() {
   const upcoming = events.filter((e) => e.status === "upcoming" || !e.status);
   const past = events.filter((e) => e.status === "completed" || e.status === "cancelled");
 
+  const formatLocationName = (loc: string) => {
+    if (!loc) return "";
+    if (loc.startsWith("b_")) {
+      const parts = loc.split("_");
+      return parts[1].toUpperCase() + (parts[2] ? ` ${parts[2]}` : "");
+    }
+    return loc;
+  };
+
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div ref={containerRef} className="max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <BackButton label="Back to Student Dashboard" fallbackPath="/student/dashboard" />
       </div>
@@ -170,7 +180,7 @@ export default function StudentEventsPage() {
             return (
               <Card
                 key={evt.id}
-                className="card-hover p-5 border-white/10 flex flex-col space-y-4"
+                className="event-card card-hover p-5 border-white/10 flex flex-col space-y-4"
               >
                 <div className="flex items-start justify-between">
                   <div>
@@ -196,7 +206,7 @@ export default function StudentEventsPage() {
                   {evt.location && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-3.5 w-3.5 text-blue-400" />
-                      {evt.location}
+                      {formatLocationName(evt.location)}
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -244,7 +254,7 @@ export default function StudentEventsPage() {
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-white">Past Events</h2>
           {past.map((evt) => (
-            <Card key={evt.id} className="p-4 border-white/5 flex flex-col space-y-2 opacity-70">
+            <Card key={evt.id} className="event-card p-4 border-white/5 flex flex-col space-y-2 opacity-70">
               <div className="flex items-start justify-between">
                 <div>
                   <h3 className="font-bold text-white text-lg">{evt.title}</h3>

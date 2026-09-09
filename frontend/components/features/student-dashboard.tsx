@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +46,8 @@ export default function StudentDashboard() {
 
   const [rushTelemetry, setRushTelemetry] = useState<any[]>([]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     async function loadData() {
       try {
@@ -90,7 +92,7 @@ export default function StudentDashboard() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div ref={containerRef} className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Welcome back, Arjun</h1>
@@ -107,7 +109,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Next Class Card */}
-      <Card className="card-hover">
+      <Card className="card-hover dashboard-card">
         <div className="flex items-start justify-between mb-4">
           <div>
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-400 mb-1">Next Upcoming Class</h2>
@@ -204,7 +206,7 @@ export default function StudentDashboard() {
             const canteenVariant = canteenLevel === "HIGH" || canteenLevel === "VERY_HIGH" ? "danger" : canteenLevel === "MODERATE" ? "warning" : "success";
 
             return (
-              <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
+              <Card className="card-hover cursor-pointer dashboard-card" onClick={() => router.push("/student/pulse")}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400">
@@ -231,7 +233,7 @@ export default function StudentDashboard() {
             const libraryVariant = libraryLevel === "HIGH" || libraryLevel === "VERY_HIGH" ? "danger" : libraryLevel === "MODERATE" ? "warning" : "success";
 
             return (
-              <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
+              <Card className="card-hover cursor-pointer dashboard-card" onClick={() => router.push("/student/pulse")}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400">
@@ -260,7 +262,7 @@ export default function StudentDashboard() {
             const foodVariant = foodLevel === "HIGH" || foodLevel === "VERY_HIGH" ? "danger" : foodLevel === "MODERATE" ? "warning" : "success";
 
             return (
-              <Card className="card-hover cursor-pointer" onClick={() => router.push("/student/pulse")}>
+              <Card className="card-hover cursor-pointer dashboard-card" onClick={() => router.push("/student/pulse")}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className="p-2.5 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400">
@@ -282,7 +284,7 @@ export default function StudentDashboard() {
       </div>
 
       {/* Functional Quick Actions */}
-      <Card>
+      <Card className="dashboard-card">
         <h2 className="text-lg font-semibold text-white mb-4">Quick Operational Actions</h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <Button
@@ -321,7 +323,7 @@ export default function StudentDashboard() {
       </Card>
 
       {/* Location Tracking */}
-      <Card>
+      <Card className="dashboard-card">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="h-4 w-4 text-campus-primary" />
           <h2 className="text-lg font-semibold text-white">Location Tracking</h2>

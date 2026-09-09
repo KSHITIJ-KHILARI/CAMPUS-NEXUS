@@ -1,0 +1,129 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper Functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isUser(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Using exists/get to check roles in the shared users collection
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+
+    function isFaculty() {
+      return isAuthenticated() && getUserRole() == 'faculty';
+    }
+
+    function isStudent() {
+      return isAuthenticated() && getUserRole() == 'student';
+    }
+
+    // 1. Users Collection (Shared Profile Data)
+    match /users/{userId} {
+      allow read: if isUser(userId) || isAdmin();
+      allow write: if isUser(userId) || isAdmin();
+    }
+
+    // 2. Role-specific Collections
+    match /students/{studentId} {
+      allow read: if isUser(studentId) || isFaculty() || isAdmin();
+      allow write: if isUser(studentId) || isAdmin();
+    }
+    
+    match /faculty/{facultyId} {
+      allow read: if isAuthenticated();
+      allow write: if isUser(facultyId) || isAdmin();
+    }
+    
+    match /faculty_status/{facultyId} {
+      allow read: if isAuthenticated();
+      allow write: if isUser(facultyId) || isAdmin();
+    }
+    
+    match /admins/{adminId} {
+      allow read, write: if isAdmin();
+    }
+
+    // 3. Global Read-Only Collections (Admin Write)
+    match /buildings/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /rooms/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /courses/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // 4. Events & Notifications
+    match /events/{eventId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /notifications/{notificationId} {
+      allow read: if isUser(resource.data.userId) || isAdmin();
+      allow write: if isUser(resource.data.userId) || isAdmin();
+    }
+
+    // 5. Campus Pulse & Crowd
+    match /pulse_locations/{locationId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    
+    match /crowd_reports/{reportId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated();
+      allow update, delete: if isAdmin();
+    }
+
+    // 6. Academics (Sections, Enrollments, Timetables)
+    match /sections/{sectionId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /enrollments/{enrollmentId} {
+      // Students can read their own. Faculty can read enrollments for their sections (requires complex rule or just allow read for authenticated for now, but strictly:
+      allow read: if isAuthenticated(); // Simplified: anyone can see enrollment mapping
+      allow write: if isAdmin();
+    }
+    match /timetables/{timetableId} {
+      // Users can only read/write their own timetables. Admins can read/write all.
+      allow read: if isUser(resource.data.userId) || isAdmin();
+      allow write: if isUser(request.resource.data.userId) || isAdmin();
+      allow update, delete: if isUser(resource.data.userId) || isAdmin();
+    }
+
+    // 7. Library & Lost and Found
+    match /library/{document=**} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+    match /lost_found/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated();
+      allow update, delete: if isUser(resource.data.reportedBy) || isAdmin();
+    }
+
+    // Block everything else by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

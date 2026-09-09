@@ -43,7 +43,7 @@ export default function EventsPage() {
     if (!confirm("Are you sure you want to delete this event?")) return;
     setDeleteError("");
     try {
-      await apiClient.delete(`/events/${id}`);
+      await api.admin.deleteEvent(id);
       setSuccessMsg("Event deleted successfully.");
       setTimeout(() => setSuccessMsg(""), 3000);
       fetchEvents();
@@ -87,7 +87,7 @@ export default function EventsPage() {
 
       {loading && (
         <div className="p-12 text-center text-sm text-gray-400 flex items-center justify-center gap-2">
-          <Sparkles className="w-5 h-5 animate-spin text-red-500" /> Loading events from PostgreSQL...
+          <Sparkles className="w-5 h-5 animate-spin text-red-500" /> Loading events from Firestore...
         </div>
       )}
 

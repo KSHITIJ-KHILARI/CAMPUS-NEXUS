@@ -45,7 +45,7 @@ export function useSchedule() {
     const todaySchedule = getTodaySchedule();
 
     for (const entry of todaySchedule) {
-      const [hours, minutes] = entry.startTime.split(":").map(Number);
+      const [hours, minutes] = (entry.startTime || "00:00").split(":").map(Number);
       const classTime = new Date(now);
       classTime.setHours(hours, minutes, 0, 0);
 
@@ -63,10 +63,10 @@ export function useSchedule() {
     const currentTime = now.getHours() * 60 + now.getMinutes();
 
     for (const entry of todaySchedule) {
-      const [startHours, startMinutes] = entry.startTime
+      const [startHours, startMinutes] = (entry.startTime || "00:00")
         .split(":")
         .map(Number);
-      const [endHours, endMinutes] = entry.endTime.split(":").map(Number);
+      const [endHours, endMinutes] = (entry.endTime || "00:00").split(":").map(Number);
 
       const start = startHours * 60 + startMinutes;
       const end = endHours * 60 + endMinutes;
@@ -84,7 +84,7 @@ export function useSchedule() {
       const todaySchedule = getTodaySchedule();
       const now = new Date();
       const upcoming = todaySchedule.filter((entry) => {
-        const [hours, minutes] = entry.startTime.split(":").map(Number);
+        const [hours, minutes] = (entry.startTime || "00:00").split(":").map(Number);
         const classTime = new Date(now);
         classTime.setHours(hours, minutes, 0, 0);
         return classTime > now;

@@ -9,6 +9,12 @@ import { BackButton } from "@/components/ui/back-button";
 import { useLocation } from "@/lib/location-context";
 import { RushInfo } from "@/lib/constants";
 import { RUSH_LEVELS } from "@/lib/constants";
+import dynamic from "next/dynamic";
+
+const CampusSVGMap = dynamic(() => import("./campus-svg-map").then(mod => mod.CampusSVGMap), {
+  ssr: false,
+  loading: () => <div className="w-full aspect-video bg-white/5 animate-pulse rounded-2xl border border-white/10" />
+});
 
 export default function Pulse() {
   const { rushData, isLoadingRush, fetchRush, tracking, campusLocations } = useLocation();
@@ -53,9 +59,10 @@ export default function Pulse() {
     very_high: { variant: "danger", label: "Very High Activity" },
   };
 
-  const getRushLevelVariant = (level: string): { variant: "default" | "success" | "warning" | "danger" | "info"; label: string } => {
+  const getRushLevelVariant = (level?: string): { variant: "default" | "success" | "warning" | "danger" | "info"; label: string } => {
+    if (!level) return { variant: "info", label: "Unknown" };
     const normalized = level.toLowerCase().replace("_", "");
-    if (normalized.includes("very_high")) return levelConfig["very_high"];
+    if (normalized.includes("veryhigh") || normalized.includes("very_high")) return levelConfig["very_high"];
     if (normalized.includes("high")) return levelConfig["high"];
     if (normalized.includes("moderate")) return levelConfig["moderate"];
     if (normalized.includes("low")) return levelConfig["low"];
@@ -66,7 +73,6 @@ export default function Pulse() {
     return (
       <div className="max-w-4xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
-          <BackButton label="Back to Student Dashboard" fallbackPath="/student/dashboard" />
         </div>
         <div>
           <h1 className="text-3xl font-bold text-white mb-1">Campus Pulse &amp; Density Telemetry</h1>
@@ -94,8 +100,7 @@ export default function Pulse() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
-        <BackButton label="Back to Student Dashboard" fallbackPath="/student/dashboard" />
+      <div className="flex items-center justify-end">
         {tracking && (
           <Badge variant="success" className="text-xs">
             🟢 GPS Tracking Active
@@ -109,6 +114,9 @@ export default function Pulse() {
           Real-time crowd intelligence aggregated from real GPS device locations and campus sensors
         </p>
       </div>
+
+      {/* Visual Map Overview */}
+      <CampusSVGMap rushData={displayData} />
 
       <div className="flex gap-2">
         <Button

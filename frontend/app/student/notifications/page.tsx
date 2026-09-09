@@ -64,7 +64,7 @@ export default function NotificationsPage() {
                     {notification.priority}
                   </Badge>
                   <span className="font-semibold text-white text-sm truncate">
-                    {notification.event.replace(/_/g, " ").toUpperCase()}
+                    {(notification.event || notification.title || "Alert").replace(/_/g, " ").toUpperCase()}
                   </span>
                 </div>
                 <p className="text-sm text-gray-300 mb-2 leading-relaxed">{notification.reason}</p>

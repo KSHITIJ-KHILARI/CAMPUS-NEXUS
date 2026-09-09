@@ -1,3 +1,4 @@
+from pydantic import ConfigDict
 """Pydantic schemas for Crowd model."""
 
 from pydantic import BaseModel
@@ -25,8 +26,7 @@ class CrowdReportInDB(CrowdReportBase):
     confidence: float
     report_count: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CrowdReport(CrowdReportInDB):
@@ -47,5 +47,4 @@ class CrowdState(CrowdStateBase):
     """Schema for crowd state response."""
     id: str
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

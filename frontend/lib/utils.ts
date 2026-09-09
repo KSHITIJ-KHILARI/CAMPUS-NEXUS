@@ -30,7 +30,12 @@ function formatInTimezone(
   options: Intl.DateTimeFormatOptions
 ): string {
   try {
-    const d = typeof date === "string" ? new Date(date) : new Date(date);
+    let d: Date;
+    if (typeof date === "object" && date !== null && "seconds" in date) {
+      d = new Date((date as any).seconds * 1000);
+    } else {
+      d = typeof date === "string" ? new Date(date) : new Date(date);
+    }
     if (Number.isNaN(d.getTime())) return "Invalid date";
     return new Intl.DateTimeFormat("en-IN", {
       timeZone: IST_TIMEZONE,

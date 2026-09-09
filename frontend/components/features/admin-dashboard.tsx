@@ -50,7 +50,7 @@ export default function AdminDashboard() {
     setLoadingCmd(true);
     setCommandOutput(null);
     try {
-      const res = await api.ai.sendMessage({ message: command });
+      const res = await api.ai.sendMessage({ message: command, role: "admin" });
       setCommandOutput(res.response);
     } catch (err: any) {
       setCommandOutput(err.message || "Execution error occurred");
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
           </div>
         </div>
         <p className="text-sm text-gray-400 mb-4">
-          Trigger real-time What-If campus scenarios. Recommendations are automatically computed and applied to PostgreSQL schedules and student notifications.
+          Trigger real-time What-If campus scenarios. Recommendations are automatically computed and applied to Firestore schedules and student notifications.
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">

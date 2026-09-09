@@ -1,4 +1,4 @@
-"""Helpers for creating notifications across the Campus NEXUS backend.
+"""Helpers for creating notifications across the Campus NEXUS backend — Firestore-backed.
 
 Other endpoints (events, issues, library, faculty) import these helpers to
 fire-and-forget notify relevant users.
@@ -9,10 +9,7 @@ from __future__ import annotations
 import uuid
 from typing import Iterable, Optional
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import Admin, Notification, Student, User
+from app.core.firebase import db
 
 
 def _new_notification_id() -> str:
@@ -20,78 +17,87 @@ def _new_notification_id() -> str:
 
 
 async def create_notification(
-    db: AsyncSession,
     *,
-    recipient_id: uuid.UUID,
+    recipient_id: str,
     event: str,
     reason: str,
     priority: str = "info",
     data: Optional[str] = None,
-) -> Notification:
-    """Create and persist a single notification for ``recipient_id``."""
-    notif = Notification(
-        id=_new_notification_id(),
-        recipient_id=recipient_id,
-        event=event,
-        reason=reason,
-        priority=priority,
-        read=False,
-        data=data,
-    )
-    db.add(notif)
-    return notif
+) -> dict:
+    """Create and persist a single notification for ``recipient_id`` in Firestore."""
+    if db is None:
+        return {}
+    notif_id = _new_notification_id()
+    notif_data = {
+        "id": notif_id,
+        "recipient_id": str(recipient_id),
+        "event": event,
+        "reason": reason,
+        "priority": priority,
+        "read": False,
+        "data": data,
+    }
+    db.collection("notifications").document(notif_id).set(notif_data)
+    return notif_data
 
 
 async def bulk_create_notifications(
-    db: AsyncSession,
     *,
-    recipient_ids: Iterable[uuid.UUID],
+    recipient_ids: Iterable[str],
     event: str,
     reason: str,
     priority: str = "info",
     data: Optional[str] = None,
-) -> list[Notification]:
+) -> list[dict]:
     """Create the same notification for many recipients in one pass."""
-    notifs = [
-        Notification(
-            id=_new_notification_id(),
-            recipient_id=rid,
-            event=event,
-            reason=reason,
-            priority=priority,
-            read=False,
-            data=data,
-        )
-        for rid in recipient_ids
-    ]
+    if db is None:
+        return []
+    batch = db.batch()
+    notifs = []
+    for rid in recipient_ids:
+        notif_id = _new_notification_id()
+        notif_data = {
+            "id": notif_id,
+            "recipient_id": str(rid),
+            "event": event,
+            "reason": reason,
+            "priority": priority,
+            "read": False,
+            "data": data,
+        }
+        doc_ref = db.collection("notifications").document(notif_id)
+        batch.set(doc_ref, notif_data)
+        notifs.append(notif_data)
     if notifs:
-        db.add_all(notifs)
+        batch.commit()
     return notifs
 
 
-async def get_all_student_user_ids(db: AsyncSession) -> list[uuid.UUID]:
+async def get_all_student_user_ids() -> list[str]:
     """Return user IDs for every active student in the system."""
-    res = await db.execute(
-        select(User.id).join(Student, Student.user_id == User.id).where(User.is_active == True)
-    )
-    return [row[0] for row in res.all()]
+    if db is None:
+        return []
+    users_ref = db.collection("users").where("role", "==", "student").where("isActive", "==", True).stream()
+    return [doc.id for doc in users_ref]
 
 
-async def get_all_faculty_user_ids(db: AsyncSession) -> list[uuid.UUID]:
+async def get_all_faculty_user_ids() -> list[str]:
     """Return user IDs for every active faculty member in the system."""
-    from app.models.faculty import Faculty
-    res = await db.execute(
-        select(User.id).join(Faculty, Faculty.user_id == User.id).where(User.is_active == True)
-    )
-    return [row[0] for row in res.all()]
+    if db is None:
+        return []
+    users_ref = db.collection("users").where("role", "==", "faculty").where("isActive", "==", True).stream()
+    return [doc.id for doc in users_ref]
 
 
-async def get_all_admin_user_ids(db: AsyncSession) -> list[uuid.UUID]:
+async def get_all_admin_user_ids() -> list[str]:
     """Return user IDs for every active admin (including super_admins)."""
-    res = await db.execute(
-        select(User.id).join(Admin, Admin.user_id == User.id).where(User.is_active == True)
-    )
-    return [row[0] for row in res.all()]
+    if db is None:
+        return []
+    ids = []
+    for role in ("admin", "super_admin"):
+        users_ref = db.collection("users").where("role", "==", role).where("isActive", "==", True).stream()
+        ids.extend(doc.id for doc in users_ref)
+    return ids
 
 
 # --------------------------------------------------------------------------- #
@@ -100,7 +106,6 @@ async def get_all_admin_user_ids(db: AsyncSession) -> list[uuid.UUID]:
 
 
 async def notify_students_new_event(
-    db: AsyncSession,
     *,
     event_title: str,
     event_id: str,
@@ -108,8 +113,8 @@ async def notify_students_new_event(
     starts_at: Optional[str] = None,
 ) -> None:
     """Notify active students and faculty about a newly created event."""
-    student_ids = await get_all_student_user_ids(db)
-    faculty_ids = await get_all_faculty_user_ids(db)
+    student_ids = await get_all_student_user_ids()
+    faculty_ids = await get_all_faculty_user_ids()
     all_ids = list(set(student_ids + faculty_ids))
     when = f" on {starts_at}" if starts_at else ""
     reason = (
@@ -117,7 +122,6 @@ async def notify_students_new_event(
         f"Check details on the events page."
     )
     await bulk_create_notifications(
-        db,
         recipient_ids=all_ids,
         event="event_created",
         reason=reason,
@@ -127,15 +131,13 @@ async def notify_students_new_event(
 
 
 async def notify_student_event_registration(
-    db: AsyncSession,
     *,
-    student_user_id: uuid.UUID,
+    student_user_id: str,
     event_title: str,
     event_id: str,
 ) -> None:
     """Confirm to a student that they have registered for an event."""
     await create_notification(
-        db,
         recipient_id=student_user_id,
         event="event_registration_confirmed",
         reason=f"You're registered for '{event_title}'. We'll remind you before it starts.",
@@ -145,7 +147,6 @@ async def notify_student_event_registration(
 
 
 async def notify_admins_new_issue(
-    db: AsyncSession,
     *,
     issue_id: str,
     title: str,
@@ -154,7 +155,7 @@ async def notify_admins_new_issue(
     location: str,
 ) -> None:
     """Notify every active admin about a newly reported issue."""
-    admin_ids = await get_all_admin_user_ids(db)
+    admin_ids = await get_all_admin_user_ids()
     p = priority or "medium"
     notif_priority = "high" if p in ("high", "critical") else "medium"
     reason = (
@@ -162,7 +163,6 @@ async def notify_admins_new_issue(
         f"Priority: {p}."
     )
     await bulk_create_notifications(
-        db,
         recipient_ids=admin_ids,
         event="issue_reported",
         reason=reason,
@@ -172,16 +172,14 @@ async def notify_admins_new_issue(
 
 
 async def notify_student_issue_status_change(
-    db: AsyncSession,
     *,
-    reporter_user_id: uuid.UUID,
+    reporter_user_id: str,
     issue_id: str,
     title: str,
     new_status: str,
 ) -> None:
     """Notify the issue reporter when status changes."""
     await create_notification(
-        db,
         recipient_id=reporter_user_id,
         event="issue_status_updated",
         reason=f"Your reported issue is now '{new_status}': '{title}'.",
@@ -191,9 +189,8 @@ async def notify_student_issue_status_change(
 
 
 async def notify_student_book_reserved(
-    db: AsyncSession,
     *,
-    student_user_id: uuid.UUID,
+    student_user_id: str,
     book_title: str,
     book_id: str,
     pickup_deadline: Optional[str] = None,
@@ -201,7 +198,6 @@ async def notify_student_book_reserved(
     """Confirm a successful book reservation to the student."""
     when = f" Pick up by {pickup_deadline}." if pickup_deadline else ""
     await create_notification(
-        db,
         recipient_id=student_user_id,
         event="book_reserved",
         reason=f"Reservation confirmed for '{book_title}'.{when}",
@@ -211,16 +207,14 @@ async def notify_student_book_reserved(
 
 
 async def notify_student_reservation_status_change(
-    db: AsyncSession,
     *,
-    student_user_id: uuid.UUID,
+    student_user_id: str,
     book_id: str,
     reservation_id: str,
     new_status: str,
 ) -> None:
     """Notify the student when a reservation status is updated by admin."""
     await create_notification(
-        db,
         recipient_id=student_user_id,
         event="reservation_status_updated",
         reason=f"Your library reservation (ID: {reservation_id}) status has been updated to '{new_status}'.",
@@ -230,24 +224,18 @@ async def notify_student_reservation_status_change(
 
 
 async def notify_students_faculty_availability_changed(
-    db: AsyncSession,
     *,
-    faculty_user_id: uuid.UUID,
+    faculty_user_id: str,
     faculty_name: str,
     is_available: bool,
 ) -> None:
-    """Notify students currently tracking a faculty that availability changed.
-
-    We don't currently track per-student faculty "subscriptions", so we
-    broadcast to all active students. This is intentionally lightweight.
-    """
-    student_ids = await get_all_student_user_ids(db)
+    """Notify students that faculty availability changed."""
+    student_ids = await get_all_student_user_ids()
     state = "available" if is_available else "unavailable"
     reason = (
         f"Faculty availability update: {faculty_name} is now {state} for office hours."
     )
     await bulk_create_notifications(
-        db,
         recipient_ids=student_ids,
         event="faculty_availability_changed",
         reason=reason,

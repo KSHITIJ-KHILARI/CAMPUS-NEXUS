@@ -237,7 +237,7 @@ export default function StudentFacultyPage() {
                   <div className="flex items-center gap-2">
                     <div
                       className={`w-2.5 h-2.5 rounded-full ${
-                        f.status === "IN CLASS"
+                        f.status === "IN_CLASS" || f.status === "IN CLASS"
                           ? "bg-amber-400 animate-pulse"
                           : available
                           ? "bg-emerald-500"
@@ -246,7 +246,7 @@ export default function StudentFacultyPage() {
                     />
                     <Badge
                       className={`text-xs capitalize ${
-                        f.status === "IN CLASS"
+                        f.status === "IN_CLASS" || f.status === "IN CLASS"
                           ? "bg-amber-500/10 text-amber-300 border-amber-500/20"
                           : available
                           ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/20"

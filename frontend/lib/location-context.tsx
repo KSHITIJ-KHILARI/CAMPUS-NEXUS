@@ -35,7 +35,7 @@ interface LocationContextType {
   rushData: RushInfo[] | null;
   campusLocations: CampusLocationInfo[] | null;
   isLoadingRush: boolean;
-  fetchRush: () => Promise<void>;
+  fetchRush: () => Promise<any>;
   fetchCampusLocations: () => Promise<void>;
 }
 
@@ -88,25 +88,19 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const fetchRush = useCallback(async () => {
     if (!user) return;
-    const now = Date.now();
-    if (now - lastRushFetchRef.current < 10000) return;
-    lastRushFetchRef.current = now;
     setIsLoadingRush(true);
-    try {
-      const data = await api.location.getRush();
+    const unsubscribe = api.location.subscribeRush((data: any) => {
       setRushData(data as RushInfo[]);
-    } catch (err: any) {
-      console.error("Failed to fetch rush data:", err);
-    } finally {
       setIsLoadingRush(false);
-    }
+    });
+    return unsubscribe;
   }, [user]);
 
   const fetchCampusLocations = useCallback(async () => {
     if (!user) return;
     try {
       const data = await api.location.getLocations();
-      setCampusLocations(data as CampusLocationInfo[]);
+      setCampusLocations(data as any as CampusLocationInfo[]);
     } catch (err: any) {
       console.error("Failed to fetch campus locations:", err);
     }
@@ -115,7 +109,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
   const refreshStatus = useCallback(async () => {
     if (!user) return;
     try {
-      const data = await api.presence.getLocation();
+      const data = await api.presence.getLocation() as any;
       setTracking(data.tracking_enabled);
       setStatus(data.location_status as "LIVE" | "OFF" | "UNAVAILABLE" | "PERMISSION_DENIED");
       setLatitude(data.latitude ?? null);
@@ -145,7 +139,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
 
   const submitLocation = useCallback(async (coords: { latitude: number; longitude: number; accuracy: number; timestamp: string }) => {
     try {
-      const result = await api.location.submitLocation(coords);
+      const result = await api.location.submitLocation(coords) as any;
       if (result?.matched_location) {
         setMatchedLocation(result.matched_location);
       }
@@ -269,10 +263,17 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     if (user) {
       refreshStatus();
       fetchCampusLocations();
-      fetchRush();
+      
+      let unsubscribe: (() => void) | undefined;
+      fetchRush().then(unsub => {
+        if (unsub) unsubscribe = unsub;
+      });
+
+      return () => {
+        if (unsubscribe) unsubscribe();
+      };
     }
   }, [user, refreshStatus, fetchCampusLocations, fetchRush]);
-
   useEffect(() => {
     if (user && tracking && watchIdRef.current === null && navigator.geolocation) {
       const id = navigator.geolocation.watchPosition(
@@ -297,14 +298,7 @@ export function LocationProvider({ children }: { children: ReactNode }) {
     }
   }, [user, tracking, handlePositionSuccess, handleError]);
 
-  useEffect(() => {
-    if (tracking) {
-      const interval = setInterval(() => {
-        fetchRush();
-      }, 30000);
-      return () => clearInterval(interval);
-    }
-  }, [tracking, fetchRush]);
+  // fetchRush is now managed via a single subscription effect on mount/user change
 
   const isStale =
     lastTimestamp &&

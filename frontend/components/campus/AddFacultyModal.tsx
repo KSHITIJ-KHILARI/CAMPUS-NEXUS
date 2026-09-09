@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import { UserPlus, CheckCircle, AlertCircle, X } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 
 const DESIGNATIONS = [
   "Assistant Professor",
@@ -46,7 +46,7 @@ export function AddFacultyModal({
     setErrorMsg("");
 
     try {
-      await apiClient.post("/admin/faculty", {
+      await api.admin.createFaculty({
         full_name: fullName,
         email,
         password,
@@ -59,7 +59,7 @@ export function AddFacultyModal({
         experience_years: experienceYears ? parseInt(experienceYears) : undefined,
         is_hod: isHod,
       });
-      setStatusMsg("Faculty " + fullName + " created successfully in PostgreSQL!");
+      setStatusMsg("Faculty " + fullName + " created successfully in Firestore!");
       if (onFacultyAdded) onFacultyAdded();
       setTimeout(() => {
         onClose();
@@ -87,7 +87,7 @@ export function AddFacultyModal({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Add New Faculty</h3>
-            <p className="text-xs text-gray-400">Creates User + Faculty profile directly in PostgreSQL</p>
+            <p className="text-xs text-gray-400">Creates User + Faculty profile directly in Firestore</p>
           </div>
         </div>
 

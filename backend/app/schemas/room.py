@@ -1,3 +1,4 @@
+from pydantic import ConfigDict
 """Pydantic schemas for Room model."""
 
 from pydantic import BaseModel
@@ -40,8 +41,7 @@ class RoomInDB(RoomBase):
     next_available: Optional[datetime] = None
     last_updated: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Room(RoomInDB):

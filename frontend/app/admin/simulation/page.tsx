@@ -41,7 +41,7 @@ export default function SimulationPage() {
     if (!results) return;
     try {
       await api.simulation.apply(results.id, "CSB 302");
-      setAppliedMsg("Recommendation applied to PostgreSQL! Updated 1 class session & sent student alerts.");
+      setAppliedMsg("Recommendation applied to Firestore! Updated 1 class session & sent student alerts.");
     } catch {
       setAppliedMsg("Recommendation applied to CSB 302.");
     }

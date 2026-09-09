@@ -26,6 +26,8 @@ const DURATION_OPTIONS = [
   { value: 1440, label: "Until manually disabled" },
 ];
 
+import { motion } from "framer-motion";
+
 export default function CampusControlCenter() {
   const { user } = useAuth();
   const { rushData, fetchRush, isLoadingRush, tracking } = useLocation();
@@ -40,7 +42,7 @@ export default function CampusControlCenter() {
       const [locationsData] = await Promise.all([
         api.location.getLocations(),
       ]);
-      setCampusLocations(locationsData as CampusLocationInfo[]);
+      setCampusLocations(locationsData as any as CampusLocationInfo[]);
 
       const overridesList = await api.location.getAdminOverrides();
       const overrideMap: Record<number, any> = {};
@@ -152,38 +154,49 @@ export default function CampusControlCenter() {
       </div>
 
       {error && (
-        <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
+        <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2">
           <XCircle className="h-4 w-4 text-red-400" />
           <span className="text-xs text-red-300">{error}</span>
-        </div>
+        </motion.div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        <Card className="p-4 border-white/10">
-          <div className="flex items-center gap-2 mb-1">
-            <MapPin className="h-4 w-4 text-emerald-400" />
-            <span className="text-sm font-medium text-white">GPS Tracking</span>
-          </div>
-          <p className="text-xs text-gray-400">
-            {tracking ? "Active — real GPS locations flowing" : "Inactive"}
-          </p>
-        </Card>
-        <Card className="p-4 border-white/10">
-          <div className="flex items-center gap-2 mb-1">
-            <Gauge className="h-4 w-4 text-campus-primary" />
-            <span className="text-sm font-medium text-white">Campus Locations</span>
-          </div>
-          <p className="text-xs text-gray-400">{campusLocations.length} configured</p>
-        </Card>
-        <Card className="p-4 border-white/10">
-          <div className="flex items-center gap-2 mb-1">
-            <Shield className="h-4 w-4 text-amber-400" />
-            <span className="text-sm font-medium text-white">Active Overrides</span>
-          </div>
-          <p className="text-xs text-gray-400">
-            {Object.values(overrides).filter((ov) => ov?.is_active).length} active
-          </p>
-        </Card>
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
+          <Card className="p-5 border-white/10 bg-gradient-to-br from-emerald-500/10 to-transparent relative overflow-hidden group">
+            <div className="absolute inset-0 bg-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-center gap-2 mb-2 relative z-10">
+              <MapPin className="h-5 w-5 text-emerald-400" />
+              <span className="text-sm font-semibold text-white">GPS Tracking</span>
+            </div>
+            <p className="text-xs text-gray-400 relative z-10">
+              {tracking ? "Active — real GPS locations flowing" : "Inactive"}
+            </p>
+          </Card>
+        </motion.div>
+        
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
+          <Card className="p-5 border-white/10 bg-gradient-to-br from-campus-primary/10 to-transparent relative overflow-hidden group">
+            <div className="absolute inset-0 bg-campus-primary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-center gap-2 mb-2 relative z-10">
+              <Gauge className="h-5 w-5 text-campus-primary" />
+              <span className="text-sm font-semibold text-white">Campus Locations</span>
+            </div>
+            <p className="text-xs text-gray-400 relative z-10">{campusLocations.length} configured zones</p>
+          </Card>
+        </motion.div>
+
+        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+          <Card className="p-5 border-white/10 bg-gradient-to-br from-amber-500/10 to-transparent relative overflow-hidden group">
+            <div className="absolute inset-0 bg-amber-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+            <div className="flex items-center gap-2 mb-2 relative z-10">
+              <Shield className="h-5 w-5 text-amber-400" />
+              <span className="text-sm font-semibold text-white">Active Overrides</span>
+            </div>
+            <p className="text-xs text-gray-400 relative z-10">
+              {Object.values(overrides).filter((ov) => ov?.is_active).length} active manual overrides
+            </p>
+          </Card>
+        </motion.div>
       </div>
 
       <div className="space-y-3">

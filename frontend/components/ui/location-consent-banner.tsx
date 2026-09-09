@@ -41,7 +41,7 @@ export function LocationConsentBanner() {
     if (!user) return;
     const fetchConsent = async () => {
       try {
-        const data = await api.presence.getConsent();
+        const data = await api.presence.getConsent() as any;
         setConsent({ is_enabled: data.is_enabled, privacy_mode: data.privacy_mode });
       } catch {
         setConsent({ is_enabled: false, privacy_mode: "PRIVATE" });

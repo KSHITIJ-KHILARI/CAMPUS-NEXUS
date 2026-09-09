@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { UserPlus, CheckCircle, AlertCircle, X } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 
 export function AddUserModal({
   isOpen,
@@ -30,13 +30,13 @@ export function AddUserModal({
     setErrorMsg("");
 
     try {
-      await apiClient.post("/admin/users", {
+      await api.admin.createUser({
         full_name: fullName,
         email,
         password,
         role,
       });
-      setStatusMsg(`User ${fullName} (${role}) created successfully in PostgreSQL!`);
+      setStatusMsg(`User ${fullName} (${role}) created successfully in Firestore!`);
       if (onUserAdded) onUserAdded();
       setTimeout(() => {
         onClose();
@@ -63,7 +63,7 @@ export function AddUserModal({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Create New Campus User</h3>
-            <p className="text-xs text-gray-400">Persists account & profile directly to PostgreSQL</p>
+            <p className="text-xs text-gray-400">Persists account & profile directly to Firestore</p>
           </div>
         </div>
 

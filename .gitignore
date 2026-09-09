@@ -81,11 +81,48 @@ tmp/
 temp/
 
 # ==========================================
-# IDE & Operating System Files
+# Firebase Emulator & Debug Logs
+# ==========================================
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+
+# ==========================================
+# Service Account Keys (real or dummy)
+# ==========================================
+*service_account*.json
+*serviceAccount*.json
+
+# ==========================================
+# Audit & One-off Script Outputs
+# ==========================================
+*_audit*.json
+*_report*.json
+
+# ==========================================
+# Backup Files
+# ==========================================
+*.bak
+*.backup
+*.orig
+
+# ==========================================
+# Test Output
+# ==========================================
+test-results/
+playwright-report/
+coverage/
+
+# ==========================================
+# IDE, Agent & Operating System Files
 # ==========================================
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
+.kilo/
+AGENTS.md
 *.swp
 *.swo

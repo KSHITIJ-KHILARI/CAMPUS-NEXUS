@@ -5,7 +5,11 @@ including middleware, CORS, rate limiting, health checks, and API routers.
 """
 
 import logging
+import os
 from contextlib import asynccontextmanager
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,15 +17,10 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.api.v1.api import api_router
-from app.api.v1 import auth
 from app.core.websocket_routes import router as websocket_router
-from app.core.database import get_session, init_db
-from app.core.redis_client import is_redis_online, close_redis
 
 logger = logging.getLogger(__name__)
 
@@ -33,22 +32,6 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """Application lifespan events."""
-    # Startup
-    from app.services.digital_twin_service import DigitalTwinService
-
-    application.state.digital_twin = DigitalTwinService()
-
-    # Check Redis status on startup
-    redis_ok = await is_redis_online()
-
-    if redis_ok:
-        logger.info("Connected to Redis at %s", settings.REDIS_URL)
-    else:
-        logger.warning(
-            "Redis is offline. Operating with graceful in-memory fallback "
-            "in development mode."
-        )
-
     # Security validation on startup
     if settings.is_production:
         insecure_keys = {
@@ -67,17 +50,7 @@ async def lifespan(application: FastAPI):
                 "environment variables."
             )
 
-    # Initialize database tables and ensure demo data exists on startup
-    try:
-        await init_db()
-        logger.info("Database tables and demo accounts initialized successfully")
-    except Exception as exc:
-        logger.error("Database initialization notice: %s", exc)
-
     yield
-
-    # Shutdown
-    await close_redis()
 
 
 # --------------------------------------------------------------------------- #
@@ -140,16 +113,10 @@ def create_application() -> FastAPI:
         )
 
     # Rate limiting (with development fallback)
-    try:
-        limiter = Limiter(
-            key_func=get_remote_address,
-            storage_uri=settings.REDIS_URL,
-        )
-    except Exception:
-        limiter = Limiter(
-            key_func=get_remote_address,
-            storage_uri="memory://",
-        )
+    limiter = Limiter(
+        key_func=get_remote_address,
+        storage_uri="memory://",
+    )
 
     application.state.limiter = limiter
 
@@ -163,8 +130,6 @@ def create_application() -> FastAPI:
     # ----------------------------------------------------------------------- #
 
     application.include_router(api_router, prefix="/api/v1")
-    application.include_router(api_router)
-    application.include_router(auth.router, prefix="/auth", tags=["auth-alias"])
     application.include_router(websocket_router)
 
     # ----------------------------------------------------------------------- #
@@ -172,46 +137,21 @@ def create_application() -> FastAPI:
     # ----------------------------------------------------------------------- #
 
     @application.get("/health", tags=["health"])
-    async def health_check(
-        db: AsyncSession = Depends(get_session),
-    ):
-        """Health check endpoint reporting backend, database and Redis status."""
-
-        db_status = "unavailable"
-
-        try:
-            await db.execute(text("SELECT 1"))
-            db_status = "connected"
-        except Exception as exc:
-            logger.error("Health check DB error: %s", exc)
-            db_status = "disconnected"
-
-        redis_status = (
-            "connected"
-            if await is_redis_online()
-            else "unavailable"
-        )
+    async def health_check():
+        """Health check endpoint."""
 
         return {
-            "status": (
-                "healthy"
-                if db_status == "connected"
-                else "degraded"
-            ),
+            "status": "healthy",
             "app": settings.APP_NAME,
             "version": settings.APP_VERSION,
             "environment": settings.ENVIRONMENT,
-            "database": db_status,
-            "redis": redis_status,
         }
 
     @application.get(
         "/api/v1/health/auth",
         tags=["health"],
     )
-    async def health_auth_alias(
-        db: AsyncSession = Depends(get_session),
-    ):
+    async def health_auth_alias():
         """Safe auth health check alias."""
 
         return {

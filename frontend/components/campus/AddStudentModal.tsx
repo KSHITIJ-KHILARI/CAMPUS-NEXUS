@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { UserPlus, CheckCircle, AlertCircle, X } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 
 export function AddStudentModal({
   isOpen,
@@ -45,7 +45,7 @@ export function AddStudentModal({
     setErrorMsg("");
 
     try {
-      await apiClient.post("/admin/students", {
+      await api.admin.createStudent({
         full_name: fullName,
         email,
         password,
@@ -59,7 +59,7 @@ export function AddStudentModal({
         bio: bio || undefined,
         is_hostelite: isHostelite,
       });
-      setStatusMsg("Student " + fullName + " created successfully in PostgreSQL!");
+      setStatusMsg("Student " + fullName + " created successfully in Firestore!");
       if (onStudentAdded) onStudentAdded();
       setTimeout(() => {
         onClose();
@@ -87,7 +87,7 @@ export function AddStudentModal({
           </div>
           <div>
             <h3 className="text-lg font-bold text-white">Add New Student</h3>
-            <p className="text-xs text-gray-400">Creates User + Student profile directly in PostgreSQL</p>
+            <p className="text-xs text-gray-400">Creates User + Student profile directly in Firestore</p>
           </div>
         </div>
 

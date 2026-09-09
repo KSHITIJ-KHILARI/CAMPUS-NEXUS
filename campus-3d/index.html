@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Campus-Nexus — Virtual Interactive 3D Campus Platform</title>
+  <meta name="description" content="State-of-the-art interactive 3D university campus digital twin map with real-time navigation, spatial building raycasting, and architectural exploration." />
+  
+  <!-- Modern Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Stylesheet -->
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- GSAP Animation Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+  <!-- ES Module Import Map for Three.js and Addons -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.162.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.162.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <!-- 3D WebGL Canvas Viewport -->
+  <div id="webgl-container"></div>
+
+  <!-- Interactive Screen Projected Tooltip -->
+  <div id="hover-tooltip" class="hover-tooltip hidden">
+    <div class="tooltip-badge" id="tooltip-badge">Academic</div>
+    <div class="tooltip-title" id="tooltip-title">Central Library</div>
+    <div class="tooltip-sub" id="tooltip-sub">Click to inspect building</div>
+  </div>
+
+  <!-- Loading Experience -->
+  <div id="loading-screen" class="loading-screen">
+    <div class="loading-card">
+      <div class="loading-icon-wrapper">
+        <div class="loading-pulse-ring"></div>
+        <div class="loading-pulse-ring delay"></div>
+        <svg class="loading-crest" viewBox="0 0 48 48" fill="none" stroke="currentColor">
+          <polygon points="24 4 44 14 44 34 24 44 4 34 4 14 24 4" stroke-width="2.5" stroke-linejoin="round" />
+          <polyline points="4 14 24 24 44 14" stroke-width="2" />
+          <line x1="24" y1="24" x2="24" y2="44" stroke-width="2" />
+          <circle cx="24" cy="24" r="3.5" fill="#38bdf8" stroke="none" />
+        </svg>
+      </div>
+      <h2 class="loading-title">CAMPUS-NEXUS</h2>
+      <p class="loading-subtitle">Synthesizing 3D Digital Twin & Spatial Scene...</p>
+      <div class="loading-bar-track">
+        <div id="loading-bar-fill" class="loading-bar-fill"></div>
+      </div>
+      <div class="loading-footer">
+        <span>Three.js WebGL Engine</span>
+        <span id="loading-pct">0%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Glassmorphism Head-Up Display (HUD) -->
+  <div id="hud-overlay" class="hud-overlay">
+    
+    <!-- Top Bar Navigation & Search -->
+    <header class="top-bar">
+      <div class="brand-group">
+        <div class="brand-logo-badge">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
+          </svg>
+        </div>
+        <div class="brand-text">
+          <div class="brand-title">CAMPUS-NEXUS</div>
+          <div class="brand-tag">3D DIGITAL TWIN</div>
+        </div>
+      </div>
+
+      <!-- Search Bar with Dropdown -->
+      <div class="search-wrapper">
+        <div class="search-box">
+          <svg class="search-icon" viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clip-rule="evenodd" />
+          </svg>
+          <input
+            type="text"
+            id="campus-search-input"
+            placeholder="Search campus buildings, labs, departments..."
+            autocomplete="off"
+            spellcheck="false"
+          />
+          <button id="search-clear-btn" class="search-clear-btn hidden" title="Clear search">&times;</button>
+          <kbd class="search-kbd-hint">/</kbd>
+        </div>
+        <!-- Autocomplete Dropdown List -->
+        <div id="search-dropdown" class="search-dropdown hidden"></div>
+      </div>
+
+      <!-- Atmosphere & View Controls -->
+      <div class="top-actions">
+        <!-- Day / Sunset / Night Atmosphere Switcher -->
+        <div class="theme-pill-group">
+          <button class="theme-btn active" data-theme="day" title="Daylight Lighting">
+            <span>☀️</span>
+            <span class="btn-label">Day</span>
+          </button>
+          <button class="theme-btn" data-theme="sunset" title="Golden Hour Lighting">
+            <span>🌅</span>
+            <span class="btn-label">Sunset</span>
+          </button>
+          <button class="theme-btn" data-theme="night" title="Cyber Midnight Lighting">
+            <span>🌙</span>
+            <span class="btn-label">Night</span>
+          </button>
+        </div>
+
+        <button id="reset-view-btn" class="action-btn" title="Reset Camera to Campus Overview">
+          <svg viewBox="0 0 20 20" fill="currentColor">
+            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd" />
+          </svg>
+          <span>Reset</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Side Slide-Over Drawer Card for Selected Building -->
+    <aside id="building-drawer" class="building-drawer closed">
+      <div class="drawer-inner">
+        <!-- Close Button -->
+        <button id="drawer-close-btn" class="drawer-close-btn" title="Close Panel">
+          &times;
+        </button>
+
+        <!-- Category & Badges -->
+        <div class="drawer-header">
+          <div class="badge-row">
+            <span id="drawer-category" class="category-badge">Academic & Research</span>
+            <span id="drawer-code" class="code-badge">LIB-100</span>
+          </div>
+          <h2 id="drawer-title" class="drawer-title">Nexus Central Library</h2>
+          <div id="drawer-style" class="drawer-style-sub">Modern Glass Prism</div>
+          
+          <div class="status-indicator-row">
+            <span class="status-dot"></span>
+            <span id="drawer-status" class="status-text">Open Now • 24/7 Access</span>
+          </div>
+        </div>
+
+        <div class="drawer-divider"></div>
+
+        <!-- Metric Cards -->
+        <div class="drawer-metrics-grid">
+          <div class="metric-card">
+            <div class="metric-label">Levels / Floors</div>
+            <div id="drawer-floors" class="metric-value">5 Floors</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Capacity</div>
+            <div id="drawer-capacity" class="metric-value">2,400 Seats</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Commissioned</div>
+            <div id="drawer-built" class="metric-value">2019</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-label">Access Hours</div>
+            <div id="drawer-hours" class="metric-value">24 Hours</div>
+          </div>
+        </div>
+
+        <!-- Overview Bio -->
+        <div class="drawer-section">
+          <h4 class="section-title">Overview</h4>
+          <p id="drawer-overview" class="drawer-bio">
+            The flagship intellectual heart of the campus housing over 800,000 volumes, silent study pods, and collaborative research studios.
+          </p>
+        </div>
+
+        <!-- Key Facilities Tags -->
+        <div class="drawer-section">
+          <h4 class="section-title">Key Facilities & Features</h4>
+          <div id="drawer-facilities" class="tags-cloud">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <!-- Academic Departments -->
+        <div class="drawer-section">
+          <h4 class="section-title">Associated Departments</h4>
+          <ul id="drawer-departments" class="dept-list">
+            <!-- Populated dynamically -->
+          </ul>
+        </div>
+
+        <!-- Contact & Extension -->
+        <div class="drawer-section drawer-contact-box">
+          <div class="contact-label">Help Desk & Concierge:</div>
+          <div id="drawer-contact" class="contact-value">library-desk@campusnexus.edu</div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="drawer-actions">
+          <button id="drawer-focus-btn" class="btn-primary-focus">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l3.293 3.293a1 1 0 01-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 11-2 0V6.414l-3.293 3.293a1 1 0 11-1.414-1.414L13.586 5H12zm-9 7a1 1 0 012 0v1.586l3.293-3.293a1 1 0 011.414 1.414L6.414 15H8a1 1 0 110 2H4a1 1 0 01-1-1v-4zm13-1a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 110-2h1.586l-3.293-3.293a1 1 0 111.414-1.414L15 13.586V12a1 1 0 011-1z" clip-rule="evenodd" />
+            </svg>
+            <span>Focus Camera</span>
+          </button>
+          <button id="drawer-direction-btn" class="btn-secondary-action">
+            <svg viewBox="0 0 20 20" fill="currentColor">
+              <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" />
+            </svg>
+            <span>Wayfinding Guide</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Floating Quick Navigation Dock -->
+    <nav class="quick-dock" id="quick-dock">
+      <div class="dock-container">
+        <button class="dock-pill active" data-nav="overview">
+          <span class="dock-icon">🌐</span>
+          <span class="dock-text">Overview</span>
+        </button>
+        <button class="dock-pill" data-nav="entrance">
+          <span class="dock-icon">🏛️</span>
+          <span class="dock-text">Main Gate</span>
+        </button>
+        <button class="dock-pill" data-nav="academic">
+          <span class="dock-icon">🎓</span>
+          <span class="dock-text">Academic Quad</span>
+        </button>
+        <button class="dock-pill" data-nav="library">
+          <span class="dock-icon">📚</span>
+          <span class="dock-text">Library</span>
+        </button>
+        <button class="dock-pill" data-nav="turing">
+          <span class="dock-icon">💻</span>
+          <span class="dock-text">Turing Hall</span>
+        </button>
+        <button class="dock-pill" data-nav="studentLife">
+          <span class="dock-icon">🍔</span>
+          <span class="dock-text">The Hive</span>
+        </button>
+        <button class="dock-pill" data-nav="athletics">
+          <span class="dock-icon">⚽</span>
+          <span class="dock-text">Sports Arena</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Interactive Navigation Hints Pill (Bottom Left) -->
+    <div class="controls-hint-card">
+      <div class="hint-item">
+        <span class="mouse-icon">🖱️</span>
+        <span><strong>Left Click:</strong> Rotate View</span>
+      </div>
+      <div class="hint-item">
+        <span class="mouse-icon">🎯</span>
+        <span><strong>Click Building:</strong> Inspect & Focus</span>
+      </div>
+      <div class="hint-item">
+        <span class="mouse-icon">🔍</span>
+        <span><strong>Scroll:</strong> Zoom (Clamped)</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Entry Point -->
+  <script type="module" src="main.js"></script>
+</body>
+</html>

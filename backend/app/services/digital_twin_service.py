@@ -1,115 +1,103 @@
-"""Digital Twin service for Campus NEXUS."""
+"""Digital Twin service for Campus NEXUS — Firestore-backed."""
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
-
-from app.models import (
-    Building,
-    Room,
-    CampusLocation,
-    Issue,
-    Lift,
-    Facility,
-    CampusState,
-)
-from app.models.crowd_state import CrowdState
-from app.models.event import Event as EventModel
-from app.models.presence import PresenceConsent
+from firebase_admin import firestore as firestore_module
+from app.core.firebase import db
 from app.services.location_service import LocationService
 
 
 class DigitalTwinService:
-    """Service for managing the Digital Twin state."""
+    """Service for managing the Digital Twin state (Firestore)."""
 
-    async def get_campus_state(self, db: AsyncSession) -> dict[str, Any]:
-        """Get the current campus state from the database."""
+    async def get_campus_state(self) -> dict[str, Any]:
+        """Get the current campus state from Firestore."""
+        if db is None:
+            return {"error": "Firestore not initialized"}
+
         try:
             # Fetch buildings
-            buildings_result = await db.execute(select(Building))
-            buildings = buildings_result.scalars().all()
+            buildings_ref = db.collection("buildings").stream()
             buildings_data = []
-            for b in buildings:
+            for doc in buildings_ref:
+                b = doc.to_dict()
                 buildings_data.append({
-                    "id": b.id,
-                    "name": b.name,
-                    "code": b.code,
-                    "latitude": b.latitude,
-                    "longitude": b.longitude,
-                    "num_floors": b.num_floors,
-                    "is_accessible": b.is_accessible,
-                    "status": "operational",
+                    "id": doc.id,
+                    "name": b.get("name", ""),
+                    "code": b.get("code", ""),
+                    "latitude": b.get("latitude"),
+                    "longitude": b.get("longitude"),
+                    "num_floors": b.get("num_floors"),
+                    "is_accessible": b.get("is_accessible", True),
+                    "status": b.get("status", "operational"),
                 })
 
-            # Fetch rooms with occupancy
-            rooms_result = await db.execute(select(Room))
-            rooms = rooms_result.scalars().all()
+            # Fetch rooms
+            rooms_ref = db.collection("rooms").stream()
             rooms_data = []
-            for r in rooms:
+            for doc in rooms_ref:
+                r = doc.to_dict()
                 rooms_data.append({
-                    "id": r.id,
-                    "building_id": r.building_id,
-                    "room_number": r.room_number,
-                    "name": r.name,
-                    "capacity": r.capacity,
-                    "room_type": r.room_type,
-                    "status": r.status,
-                    "is_accessible": r.is_accessible,
+                    "id": doc.id,
+                    "building_id": r.get("building_id"),
+                    "room_number": r.get("room_number", ""),
+                    "name": r.get("name", ""),
+                    "capacity": r.get("capacity"),
+                    "room_type": r.get("room_type", ""),
+                    "status": r.get("status", "available"),
+                    "is_accessible": r.get("is_accessible", True),
                 })
 
             # Fetch campus locations
-            locations_result = await db.execute(select(CampusLocation))
-            locations = locations_result.scalars().all()
+            locations_ref = db.collection("campus_locations").stream()
             locations_data = []
-            for loc in locations:
+            for doc in locations_ref:
+                loc = doc.to_dict()
                 locations_data.append({
-                    "id": loc.id,
-                    "name": loc.name,
-                    "location_type": loc.location_type,
-                    "building_id": loc.building_id,
-                    "latitude": loc.latitude,
-                    "longitude": loc.longitude,
-                    "capacity": getattr(loc, "capacity", None),
-                    "status": getattr(loc, "status", "operational"),
+                    "id": doc.id,
+                    "name": loc.get("name", ""),
+                    "location_type": loc.get("location_type", ""),
+                    "building_id": loc.get("building_id"),
+                    "latitude": loc.get("latitude"),
+                    "longitude": loc.get("longitude"),
+                    "capacity": loc.get("capacity"),
+                    "status": loc.get("status", "operational"),
                 })
 
             # Fetch active issues
-            issues_result = await db.execute(
-                select(Issue).where(Issue.status.in_(["open", "in_progress"]))
-            )
-            issues = issues_result.scalars().all()
+            issues_ref = db.collection("issues").where("status", "in", ["open", "in_progress"]).stream()
             issues_data = []
-            for iss in issues:
+            for doc in issues_ref:
+                iss = doc.to_dict()
                 issues_data.append({
-                    "id": iss.id,
-                    "title": iss.title,
-                    "category": iss.category,
-                    "priority": iss.priority,
-                    "status": iss.status,
-                    "location_id": iss.location_id,
+                    "id": doc.id,
+                    "title": iss.get("title", ""),
+                    "category": iss.get("category", ""),
+                    "priority": iss.get("priority", "medium"),
+                    "status": iss.get("status", "open"),
+                    "location_id": iss.get("location_id"),
                 })
 
             # Fetch lifts
-            lifts_result = await db.execute(select(Lift))
-            lifts = lifts_result.scalars().all()
+            lifts_ref = db.collection("lifts").stream()
             lifts_data = []
-            for lift in lifts:
+            for doc in lifts_ref:
+                lift = doc.to_dict()
                 lifts_data.append({
-                    "id": lift.id,
-                    "building_id": lift.building_id,
-                    "lift_number": lift.lift_number,
-                    "status": lift.status,
-                    "current_floor": lift.current_floor,
-                    "direction": lift.direction,
-                    "capacity": lift.capacity,
+                    "id": doc.id,
+                    "building_id": lift.get("building_id"),
+                    "lift_number": lift.get("lift_number", ""),
+                    "status": lift.get("status", "operational"),
+                    "current_floor": lift.get("current_floor"),
+                    "direction": lift.get("direction"),
+                    "capacity": lift.get("capacity"),
                 })
 
             # Fetch crowd states with real-time GPS rush intelligence
             crowd_data = {}
             try:
-                rush_states = await LocationService.get_rush_state(db)
+                rush_states = await LocationService.get_rush_state()
                 for r in rush_states:
                     loc_id = r.get("location_id")
                     crowd_data[f"location_{loc_id}"] = {
@@ -122,50 +110,50 @@ class DigitalTwinService:
                         "confidence": r.get("confidence", 0.8),
                     }
             except Exception:
-                crowd_result = await db.execute(select(CrowdState))
-                crowd_states = crowd_result.scalars().all()
-                for cs in crowd_states:
-                    crowd_data[f"location_{cs.location_id}"] = {
-                        "density_level": cs.density_level,
-                        "current_count": cs.current_count,
-                        "capacity": cs.capacity,
-                        "occupancy_ratio": cs.occupancy_ratio,
-                        "is_alert": cs.is_alert,
+                # Fallback: read crowd_states collection
+                crowd_ref = db.collection("crowd_states").stream()
+                for doc in crowd_ref:
+                    cs = doc.to_dict()
+                    crowd_data[f"location_{cs.get('location_id', doc.id)}"] = {
+                        "density_level": cs.get("density_level", "low"),
+                        "current_count": cs.get("current_count", 0),
+                        "capacity": cs.get("capacity"),
+                        "occupancy_ratio": cs.get("occupancy_ratio", 0.0),
+                        "is_alert": cs.get("is_alert", False),
                     }
 
             # Fetch active events
-            events_result = await db.execute(
-                select(EventModel).where(EventModel.status.in_(["upcoming", "ongoing"]))
-            )
-            events = events_result.scalars().all()
+            events_ref = db.collection("events").where("status", "in", ["upcoming", "ongoing"]).stream()
             events_data = []
-            for evt in events:
+            for doc in events_ref:
+                evt = doc.to_dict()
                 events_data.append({
-                    "id": evt.id,
-                    "title": evt.title,
-                    "event_type": evt.event_type,
-                    "location_id": evt.location_id,
-                    "start_time": evt.start_time.isoformat() if evt.start_time else None,
-                    "end_time": evt.end_time.isoformat() if evt.end_time else None,
-                    "status": evt.status,
-                    "max_participants": evt.max_participants,
-                    "registrations": evt.registrations,
+                    "id": doc.id,
+                    "title": evt.get("title", ""),
+                    "event_type": evt.get("event_type", ""),
+                    "location_id": evt.get("location_id"),
+                    "start_time": evt.get("start_time"),
+                    "end_time": evt.get("end_time"),
+                    "status": evt.get("status", "upcoming"),
+                    "max_participants": evt.get("max_participants"),
+                    "registrations": evt.get("registrations", 0),
                 })
 
-            # Fetch presence counts (only enabled, respecting privacy)
-            presence_result = await db.execute(
-                select(PresenceConsent).where(PresenceConsent.is_enabled == True)
-            )
-            presence_consents = presence_result.scalars().all()
+            # Fetch presence counts
+            presence_ref = db.collection("presence_consent").where("is_enabled", "==", True).stream()
+            active_count = 0
+            zones: dict[str, int] = {}
+            for doc in presence_ref:
+                p = doc.to_dict()
+                active_count += 1
+                zone = p.get("current_zone")
+                if zone:
+                    zones[zone] = zones.get(zone, 0) + 1
+
             presence_summary = {
-                "active_users": len(presence_consents),
-                "zones": {},
+                "active_users": active_count,
+                "zones": zones,
             }
-            for p in presence_consents:
-                if p.current_zone:
-                    presence_summary["zones"][p.current_zone] = (
-                        presence_summary["zones"].get(p.current_zone, 0) + 1
-                    )
 
             return {
                 "buildings": buildings_data,
@@ -176,48 +164,26 @@ class DigitalTwinService:
                 "crowd": crowd_data,
                 "events": events_data,
                 "presence": presence_summary,
-                "last_updated": datetime.utcnow().isoformat(),
+                "last_updated": datetime.now(timezone.utc).isoformat(),
             }
         except Exception as exc:
             raise RuntimeError(f"Failed to load digital twin state: {str(exc)}") from exc
 
-    async def _get_buildings_state(self) -> dict[str, Any]:
-        """Get buildings state (deprecated, use get_campus_state)."""
-        return {}
-
-    async def _get_rooms_state(self) -> dict[str, Any]:
-        """Get rooms state (deprecated, use get_campus_state)."""
-        return {}
-
-    async def _get_crowd_state(self) -> dict[str, Any]:
-        """Get crowd state (deprecated, use get_campus_state)."""
-        return {}
-
-    async def _get_issues_state(self) -> dict[str, Any]:
-        """Get issues state (deprecated, use get_campus_state)."""
-        return []
-
-    async def _get_lifts_state(self) -> dict[str, Any]:
-        """Get lift states (deprecated, use get_campus_state)."""
-        return {}
-
-    async def _get_events_state(self) -> dict[str, Any]:
-        """Get events state (deprecated, use get_campus_state)."""
-        return []
-
     async def update_building_status(self, building_id: str, status: str) -> None:
-        """Update building operational status."""
-        pass
+        """Update building operational status in Firestore."""
+        if db is None:
+            return
+        db.collection("buildings").document(building_id).update({"status": status})
 
     async def update_lift_status(self, lift_id: str, status: str) -> None:
-        """Update lift status."""
-        pass
+        """Update lift status in Firestore."""
+        if db is None:
+            return
+        db.collection("lifts").document(lift_id).update({"status": status})
 
     async def broadcast_state_update(self, entity_type: str, entity_id: str, data: dict[str, Any]) -> None:
-        """Broadcast state update to connected clients."""
-        from app.core.redis_client import redis_client
-        import json
-        await redis_client.publish(
-            f"campus_state:{entity_type}",
-            json.dumps({"entity_id": entity_id, "data": data}),
-        )
+        """Broadcast state update via Firestore document write."""
+        if db is None:
+            return
+        doc_ref = db.collection("state_updates").document(f"{entity_type}_{entity_id}")
+        doc_ref.set({"data": data, "timestamp": firestore_module.SERVER_TIMESTAMP})

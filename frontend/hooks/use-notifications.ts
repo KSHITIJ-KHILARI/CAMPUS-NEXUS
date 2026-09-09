@@ -9,6 +9,7 @@ export interface NotificationItem {
   reason: string;
   priority: string;
   read: boolean;
+  title?: string;
   data?: string | null;
   timestamp?: string | null;
 }
@@ -17,42 +18,37 @@ export function useNotifications() {
   const queryClient = useQueryClient();
 
   const [unreadCount, setUnreadCount] = useState(0);
-  const [authToken, setAuthToken] = useState<string | null>(null);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    setAuthToken(localStorage.getItem("auth_token"));
+    setIsLoading(true);
+    const unsubscribe = api.notifications.subscribeAll((data: any[]) => {
+      const formatted = (data || []).map((n: any) => ({
+        id: n.id,
+        recipient_id: n.userId || "all",
+        event: n.title || n.event || "Campus Alert",
+        reason: n.message || n.reason || "",
+        priority: n.severity === "danger" ? "high" : n.severity === "warning" ? "medium" : "info",
+        read: !!n.read,
+        timestamp: n.timestamp || new Date().toISOString(),
+        title: n.title,
+        link: n.link,
+      }));
+      setNotifications(formatted as NotificationItem[]);
+      const unread = formatted.filter((n: any) => !n.read).length;
+      setUnreadCount(unread);
+      setIsLoading(false);
+    });
+    return () => {
+      unsubscribe();
+    };
   }, []);
 
-  const enabled = !!authToken;
-
-  const {
-    data: notifications,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery<NotificationItem[]>({
-    queryKey: ["notifications"],
-    queryFn: () => api.notifications.getAll() as unknown as Promise<NotificationItem[]>,
-    enabled,
-    refetchInterval: 60000,
-    staleTime: 30000,
-  });
-
-  const {
-    data: unreadData,
-  } = useQuery<{ unread: number; count: number }>({
-    queryKey: ["notifications", "unread-count"],
-    queryFn: () => api.notifications.getUnread() as unknown as Promise<{ unread: number; count: number }>,
-    enabled,
-    refetchInterval: 30000,
-  });
-
-  useEffect(() => {
-    if (unreadData && typeof unreadData.count === "number") {
-      setUnreadCount(unreadData.count);
-    }
-  }, [unreadData]);
+  const refetch = useCallback(async () => {
+    // No-op for real-time
+  }, []);
 
   const markAsReadMutation = useMutation({
     mutationFn: (id: string) => api.notifications.markAsRead(id),

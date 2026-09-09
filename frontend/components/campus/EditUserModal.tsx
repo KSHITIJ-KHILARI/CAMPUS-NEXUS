@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { UserCheck, CheckCircle, AlertCircle, X } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 
 interface UserRecord {
   id: string;
@@ -49,13 +49,13 @@ export function EditUserModal({
     setErrorMsg("");
 
     try {
-      await apiClient.put(`/admin/users/${user.id}`, {
+      await api.admin.updateUser(user.id, {
         full_name: fullName,
         email,
         role,
         is_active: isActive,
       });
-      setStatusMsg("User profile successfully updated and persisted in PostgreSQL!");
+      setStatusMsg("User profile successfully updated and persisted in Firestore!");
       if (onUserUpdated) onUserUpdated();
       setTimeout(() => {
         onClose();

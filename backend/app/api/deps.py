@@ -1,50 +1,51 @@
 """Dependency injection for FastAPI endpoints.
 
 Provides reusable dependencies for authentication, authorization,
-database sessions, and current user retrieval.
+and current user retrieval using Firebase.
 """
 
 from typing import Annotated
-
-import uuid
+import logging
+from enum import Enum
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import JWTError, jwt
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
+from pydantic import BaseModel
 
 from app.core.config import settings
-from app.core.database import async_session_factory, get_session
-from app.core.redis_client import cache_get
-from app.core.security import verify_token
-from app.models import User, Student, Faculty, Admin
+from app.core.firebase import auth_client, db
+
+logger = logging.getLogger(__name__)
 
 # --------------------------------------------------------------------------- #
-# Database
+# Models
 # --------------------------------------------------------------------------- #
 
-async def get_current_db() -> AsyncSession:
-    """Dependency for getting a database session."""
-    async with async_session_factory() as session:
-        yield session
+class UserRole(str, Enum):
+    """Enumerated user roles for RBAC."""
+    STUDENT = "student"
+    FACULTY = "faculty"
+    ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
 
+class User(BaseModel):
+    """The central user entity for Campus Nexus."""
+    id: str
+    email: str
+    full_name: str
+    role: UserRole
+    is_active: bool = True
 
 # --------------------------------------------------------------------------- #
 # Authentication
 # --------------------------------------------------------------------------- #
 
-import logging
-
-logger = logging.getLogger(__name__)
-
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
 async def get_current_user(
     token: Annotated[str | None, Depends(oauth2_scheme)],
-    db: Annotated[AsyncSession, Depends(get_current_db)],
 ) -> User:
-    """Get the current authenticated user from JWT token with detailed failure logging."""
+    """Get the current authenticated user from Firebase Auth token."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -55,34 +56,37 @@ async def get_current_user(
         logger.warning("[AUTH_FAILURE] Reason: NO_TOKEN — Bearer authorization header missing or undefined.")
         raise credentials_exception
 
-    if await cache_get(f"revoked_token:{token}"):
-        logger.warning("[AUTH_FAILURE] Reason: REVOKED_TOKEN — token was invalidated during logout.")
-        raise credentials_exception
-
-    payload = verify_token(token)
-    if payload is None:
-        logger.warning("[AUTH_FAILURE] Reason: INVALID_TOKEN or EXPIRED_TOKEN — JWT decode failed.")
-        raise credentials_exception
-
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        logger.warning("[AUTH_FAILURE] Reason: INVALID_TOKEN — JWT subject claim missing.")
-        raise credentials_exception
-
     try:
-        user_uuid = uuid.UUID(user_id)
-    except ValueError:
-        logger.warning("[AUTH_FAILURE] Reason: INVALID_TOKEN — Invalid UUID format in subject claim: %s", user_id)
+        payload = auth_client.verify_id_token(token)
+        user_id = payload.get("uid")
+    except Exception as e:
+        logger.warning(f"[AUTH_FAILURE] Firebase Auth decode failed: {e}")
         raise credentials_exception
 
-    result = await db.execute(select(User).where(User.id == user_uuid))
-    user = result.scalar_one_or_none()
-
-    if user is None:
-        logger.warning("[AUTH_FAILURE] Reason: USER_NOT_FOUND — User ID %s does not exist in database.", user_id)
+    if user_id is None:
+        logger.warning("[AUTH_FAILURE] Reason: INVALID_TOKEN — Firebase uid missing.")
         raise credentials_exception
 
-    return user
+    # Fetch user from Firestore
+    try:
+        doc_ref = db.collection("users").document(user_id)
+        doc = doc_ref.get()
+        
+        if not doc.exists:
+            logger.warning("[AUTH_FAILURE] Reason: USER_NOT_FOUND — User ID %s does not exist in Firestore.", user_id)
+            raise credentials_exception
+            
+        data = doc.to_dict()
+        return User(
+            id=user_id,
+            email=data.get("email", payload.get("email", "")),
+            full_name=data.get("full_name", payload.get("name", "Student")),
+            role=UserRole(data.get("role", "student")),
+            is_active=data.get("isActive", True)
+        )
+    except Exception as e:
+        logger.error(f"[AUTH_FAILURE] Firestore error: {e}")
+        raise credentials_exception
 
 
 async def get_current_active_user(

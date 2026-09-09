@@ -105,7 +105,7 @@ export default function IssuesPage() {
 
       {loading && (
         <div className="p-12 text-center text-sm text-gray-400 flex items-center justify-center gap-2">
-          <Sparkles className="w-5 h-5 animate-spin text-red-500" /> Loading incident reports from PostgreSQL...
+          <Sparkles className="w-5 h-5 animate-spin text-red-500" /> Loading incident reports from Firestore...
         </div>
       )}
 

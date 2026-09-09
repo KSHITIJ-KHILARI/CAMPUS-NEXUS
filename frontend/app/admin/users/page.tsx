@@ -5,12 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, UserPlus, Edit3, Search, Sparkles } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { BackButton } from "@/components/ui/back-button";
 import { AddUserModal } from "@/components/campus/AddUserModal";
 import { EditUserModal } from "@/components/campus/EditUserModal";
 
 import { useDebounce } from "@/hooks/use-debounce";
+import { motion } from "framer-motion";
 
 interface UserRecord {
   id: string;
@@ -31,8 +32,8 @@ export default function UsersPage() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<UserRecord[]>(`/admin/users${debouncedQuery ? `?q=${encodeURIComponent(debouncedQuery)}` : ""}`);
-      setUsers(data);
+      const data = await api.admin.getUsers(debouncedQuery);
+      setUsers(data as unknown as UserRecord[]);
     } catch {
       //
     } finally {
@@ -59,7 +60,7 @@ export default function UsersPage() {
 
       <div>
         <h1 className="text-3xl font-bold text-white mb-1">User Account Management</h1>
-        <p className="text-gray-400">View, create, and manage student, faculty, and administrative accounts in PostgreSQL</p>
+        <p className="text-gray-400">View, create, and manage student, faculty, and administrative accounts in Firestore</p>
       </div>
 
       {/* Search Input */}
@@ -74,48 +75,65 @@ export default function UsersPage() {
         />
       </div>
 
-      <Card className="border-white/10">
-        <div className="space-y-3">
+      <Card className="border-white/10 overflow-hidden bg-white/[0.02]">
+        <div className="space-y-0 divide-y divide-white/5">
           {loading && (
-            <div className="p-8 text-center text-sm text-gray-400 flex items-center justify-center gap-2">
-              <Sparkles className="w-4 h-4 animate-spin text-red-500" /> Loading users from PostgreSQL...
+            <div className="p-12 text-center flex flex-col items-center justify-center gap-3">
+              <div className="relative">
+                <div className="absolute inset-0 bg-red-500/20 blur-xl rounded-full" />
+                <Sparkles className="w-8 h-8 animate-spin text-red-500 relative z-10" />
+              </div>
+              <p className="text-gray-400 font-medium tracking-wide">Syncing users from Database...</p>
             </div>
           )}
 
           {!loading && users.length === 0 && (
-            <div className="p-8 text-center text-sm text-gray-400">No user accounts found matching query.</div>
+            <div className="p-12 flex flex-col items-center justify-center text-center">
+              <div className="w-16 h-16 bg-white/5 rounded-2xl flex items-center justify-center mb-4">
+                <Users className="w-8 h-8 text-gray-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-white mb-1">No Users Found</h3>
+              <p className="text-sm text-gray-400 max-w-sm">
+                We couldn&apos;t find any user accounts matching &quot;{query}&quot;. Try adjusting your search or add a new user.
+              </p>
+            </div>
           )}
 
           {!loading &&
-            users.map((user) => (
-              <div
+            users.map((user, i) => (
+              <motion.div
                 key={user.id}
-                className="flex items-center justify-between p-4 bg-white/5 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="flex items-center justify-between p-4 hover:bg-white/[0.04] transition-colors group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400 font-bold uppercase">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500/20 to-orange-500/10 border border-red-500/20 flex items-center justify-center text-red-400 font-bold uppercase text-lg shadow-[0_0_15px_rgba(239,68,68,0.1)] group-hover:shadow-[0_0_20px_rgba(239,68,68,0.2)] transition-shadow">
                     {user.full_name ? user.full_name[0] : user.email[0]}
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">{user.full_name || user.email}</h3>
-                    <p className="text-xs text-gray-400">{user.email}</p>
+                    <h3 className="font-semibold text-white text-base group-hover:text-red-400 transition-colors">
+                      {user.full_name || "Unknown User"}
+                    </h3>
+                    <p className="text-sm text-gray-400 font-mono">{user.email}</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                  <Badge variant={user.role === "admin" ? "warning" : user.role === "faculty" ? "success" : "info"}>
+                <div className="flex items-center gap-4">
+                  <Badge variant={user.role === "admin" ? "warning" : user.role === "faculty" ? "success" : "info"} className="px-3 py-1 bg-opacity-20 border-opacity-30">
                     {user.role}
                   </Badge>
                   <Button
                     size="sm"
-                    variant="outline"
+                    variant="ghost"
                     onClick={() => setSelectedUser(user)}
-                    className="border-white/10 text-xs text-gray-300 hover:text-white"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-xs text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 h-8"
                   >
-                    <Edit3 className="w-3.5 h-3.5 mr-1" /> Edit
+                    <Edit3 className="w-3.5 h-3.5 mr-1.5" /> Edit Profile
                   </Button>
                 </div>
-              </div>
+              </motion.div>
             ))}
         </div>
       </Card>

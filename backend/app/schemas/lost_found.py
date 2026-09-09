@@ -1,3 +1,4 @@
+from pydantic import ConfigDict
 """Pydantic schemas for Lost & Found models."""
 
 from pydantic import BaseModel
@@ -26,8 +27,7 @@ class LostItemInDB(LostItemBase):
     status: str = "active"  # active, found, closed
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LostItem(LostItemInDB):
@@ -56,8 +56,7 @@ class FoundItemInDB(FoundItemBase):
     status: str = "available"  # available, claimed, returned
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FoundItem(FoundItemInDB):
@@ -73,5 +72,4 @@ class LostFoundMatch(BaseModel):
     matched_at: datetime
     status: str  # pending, confirmed, rejected
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

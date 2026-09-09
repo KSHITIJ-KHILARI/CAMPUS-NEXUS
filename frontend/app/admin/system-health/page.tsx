@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Activity, Database, Server, ShieldCheck, Sparkles, RefreshCw } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { BackButton } from "@/components/ui/back-button";
 
 interface HealthStatus {
@@ -23,7 +23,7 @@ export default function SystemHealthPage() {
   const fetchHealth = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<HealthStatus>("/admin/system-health");
+      const data = await api.admin.getSystemHealth();
       setHealth(data);
     } catch {
       setHealth({
@@ -59,7 +59,7 @@ export default function SystemHealthPage() {
 
       <div>
         <h1 className="text-3xl font-bold text-white mb-1">System Health Diagnostics</h1>
-        <p className="text-gray-400">Live operational status of PostgreSQL database, JWT authentication, and AI services</p>
+        <p className="text-gray-400">Live operational status of Firestore database, JWT authentication, and AI services</p>
       </div>
 
       <Card className="p-6 border-white/10 space-y-4">
@@ -75,7 +75,7 @@ export default function SystemHealthPage() {
               <div className="flex items-center gap-3">
                 <Database className="w-6 h-6 text-emerald-400" />
                 <div>
-                  <h3 className="font-semibold text-white text-sm">PostgreSQL Database</h3>
+                  <h3 className="font-semibold text-white text-sm">Firestore Database</h3>
                   <p className="text-xs text-gray-400">Relational Database Engine</p>
                 </div>
               </div>

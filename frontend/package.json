@@ -13,13 +13,19 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
+    "@genkit-ai/google-genai": "^1.42.0",
+    "@gsap/react": "^2.1.2",
     "@next-auth/prisma-adapter": "^1.0.7",
     "@react-three/drei": "^9.92.7",
     "@react-three/fiber": "^8.15.12",
     "@tanstack/react-query": "^5.17.0",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.0",
-    "framer-motion": "^11.0.3",
+    "firebase": "^12.18.0",
+    "framer-motion": "^11.18.2",
+    "genkit": "^1.42.0",
+    "genkitx-ollama": "^1.42.0",
+    "gsap": "^3.15.0",
     "lucide-react": "^0.303.0",
     "maplibre-gl": "^3.6.2",
     "next": "^14.0.4",
@@ -32,7 +38,9 @@
     "zustand": "^4.4.7"
   },
   "devDependencies": {
+    "@firebase/rules-unit-testing": "^5.0.2",
     "@tailwindcss/forms": "^0.5.7",
+    "@types/jest": "^30.0.0",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
@@ -40,8 +48,12 @@
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-next": "^14.0.4",
+    "firebase-admin": "^14.3.0",
+    "jest": "^30.5.1",
+    "playwright": "^1.63.0",
     "postcss": "^8.4.32",
     "tailwindcss": "^3.4.0",
+    "ts-jest": "^29.4.12",
     "typescript": "^5.3.3"
   }
 }

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Search, MapPin, Plus, Sparkles } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { BackButton } from "@/components/ui/back-button";
 import { ReportLostFoundModal } from "@/components/campus/ReportLostFoundModal";
 import { LostItemDetailsModal } from "@/components/campus/LostItemDetailsModal";
@@ -21,8 +21,8 @@ export default function LostFoundPage() {
   const fetchItems = async () => {
     setLoading(true);
     try {
-      const data = await apiClient.get<any[]>(`/lost-found/items?type=${activeTab}${searchQuery ? `&q=${encodeURIComponent(searchQuery)}` : ""}`);
-      setItems(data);
+      const data = await api.lostFound.getItems(activeTab, searchQuery);
+      setItems(data || []);
     } catch {
       //
     } finally {

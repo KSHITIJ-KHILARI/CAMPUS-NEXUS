@@ -26,32 +26,9 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     DEBUG: bool = False
 
-    # --- Database ---
-    DATABASE_URL: str = (
-        "postgresql+asyncpg://campus_nexus:campus_nexus_pass@localhost:5432/campus_nexus"
-    )
-
-    @field_validator("DATABASE_URL", mode="before")
-    @classmethod
-    def parse_database_url(cls, v: Any) -> str:
-        """Ensure DATABASE_URL uses the asyncpg driver for async SQLAlchemy."""
-        if isinstance(v, str):
-            if v.startswith("postgres://"):
-                return v.replace("postgres://", "postgresql+asyncpg://", 1)
-            if v.startswith("postgresql://") and not v.startswith("postgresql+"):
-                return v.replace("postgresql://", "postgresql+asyncpg://", 1)
-        return str(v)
-
-    @property
-    def SYNC_DATABASE_URL(self) -> str:
-        """Return a synchronous database URL for Alembic / migrations."""
-        if "+asyncpg" in self.DATABASE_URL:
-            return self.DATABASE_URL.replace("+asyncpg", "")
-        return self.DATABASE_URL
-
-    # --- Redis ---
-    REDIS_URL: str = "redis://localhost:6379/0"
-    REDIS_MAX_CONNECTIONS: int = 20
+    # --- Database (Firebase/Firestore — no SQL database required) ---
+    # All data persistence uses Google Cloud Firestore via firebase-admin SDK.
+    # See app/core/firebase.py for the Firestore client singleton.
 
     # --- Security & Hosts ---
     SECRET_KEY: str = "dev-secret-key-change-in-production"

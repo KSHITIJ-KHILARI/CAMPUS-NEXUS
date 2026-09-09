@@ -11,6 +11,7 @@ export interface User {
   full_name?: string;
   role: UserRole;
   status: UserStatus;
+  is_active?: boolean;
   avatar?: string;
   phone?: string;
   createdAt: string;

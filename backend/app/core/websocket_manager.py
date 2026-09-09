@@ -1,7 +1,7 @@
 """FastAPI WebSocket connection manager.
 
 Manages WebSocket connections, supports per-group broadcasting, and
-integrates with the Redis pub/sub system for cross-process messaging.
+handles in-memory connection tracking for real-time updates.
 """
 
 import json

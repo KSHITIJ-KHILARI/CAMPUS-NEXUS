@@ -96,7 +96,7 @@ export default function SettingsPage() {
             </div>
             <div className="flex items-center justify-between p-3 bg-white/5 rounded-xl border border-white/5">
               <div>
-                <p className="text-sm text-white">PostgreSQL Database Engine</p>
+                <p className="text-sm text-white">Firestore Database Engine</p>
                 <p className="text-xs text-gray-400">Relational digital twin store (59 tables)</p>
               </div>
               <Badge variant="success">Connected</Badge>

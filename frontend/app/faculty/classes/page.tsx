@@ -9,14 +9,20 @@ import { Users, BookOpen, AlertTriangle, MapPin, Clock, FileText } from "lucide-
 import { api } from "@/lib/api-client"
 
 interface ScheduleEntry {
-  id: number
-  day: string
-  start: string
-  end: string
-  course: string
-  section: string
-  room: string
-  type: string
+  id: number | string
+  day?: string
+  day_of_week?: string
+  start?: string
+  start_time?: string
+  end?: string
+  end_time?: string
+  course?: string
+  course_name?: string
+  course_code?: string
+  section?: string
+  room?: string
+  room_number?: string
+  type?: string
 }
 
 interface Student {
@@ -48,8 +54,8 @@ export default function FacultyClassesPage() {
           api.faculty.getSchedule(),
           api.faculty.getStudents(),
         ])
-        setSchedule(schedRes.schedule || [])
-        setStudents(studRes || [])
+        setSchedule((schedRes.entries || []) as unknown as ScheduleEntry[])
+        setStudents((studRes || []) as unknown as Student[])
       } catch (err) {
         console.error("Failed to fetch data:", err)
       }
@@ -62,18 +68,24 @@ export default function FacultyClassesPage() {
     setDetailsOpen(true)
   }
 
-  const displayClasses = schedule.length > 0
+  const displayClasses: ScheduleEntry[] = schedule.length > 0
     ? schedule
     : fallbackClasses.map(c => ({
         id: parseInt(c.id),
         day: c.day,
+        day_of_week: c.day,
         start: c.time.split(" - ")[0],
+        start_time: c.time.split(" - ")[0],
         end: c.time.split(" - ")[1],
+        end_time: c.time.split(" - ")[1],
         course: c.name,
+        course_name: c.name,
+        course_code: c.name.split(" - ")[0] || "CSC",
         section: c.section,
         room: c.room,
-        type: c.type as "lecture" | "lab",
-      }))
+        room_number: c.room,
+        type: c.type,
+      }));
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -87,15 +99,17 @@ export default function FacultyClassesPage() {
           <Card key={cls.id} className="card-hover">
             <div className="flex items-start justify-between mb-3">
               <div>
-                <h3 className="font-semibold text-white">{cls.course}</h3>
-                <p className="text-sm text-gray-400">{cls.day} • {cls.start} - {cls.end}</p>
+                <h3 className="font-semibold text-white">
+                  {cls.course || (cls.course_code ? `${cls.course_code} — ${cls.course_name}` : cls.course_name) || "Academic Course Lecture"}
+                </h3>
+                <p className="text-sm text-gray-400">{cls.day || cls.day_of_week || "Monday"} • {cls.start || cls.start_time} - {cls.end || cls.end_time}</p>
               </div>
               <Badge variant="info">Active</Badge>
             </div>
             <div className="flex items-center gap-6 text-sm text-gray-400 mb-4">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4" />
-                {cls.room}
+                {cls.room || cls.room_number || "Room TBA"}
               </div>
               <div className="flex items-center gap-2">
                 <Users className="h-4 w-4" />

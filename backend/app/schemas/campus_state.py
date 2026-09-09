@@ -1,3 +1,4 @@
+from pydantic import ConfigDict
 """Pydantic schemas for CampusState model."""
 
 from pydantic import BaseModel
@@ -38,8 +39,7 @@ class CampusStateInDB(CampusStateBase):
     id: str
     version: int = 1
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CampusState(CampusStateInDB):

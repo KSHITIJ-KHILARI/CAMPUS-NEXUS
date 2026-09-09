@@ -1,4 +1,4 @@
-"""Location service for Campus NEXUS real-time GPS geofencing and rush calculation.
+"""Location service for Campus NEXUS — Firestore-backed GPS geofencing and rush calculation.
 
 This service performs:
 1. Geofence matching — given a GPS coordinate, determine the nearest
@@ -13,12 +13,8 @@ This service performs:
 import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
-from app.models.campus_location import CampusLocation
-from app.models.user_location import UserLocationState
-from app.models.admin_rush_override import AdminRushOverride
+from app.core.firebase import db
 
 
 EARTH_RADIUS_M = 6_371_000
@@ -57,92 +53,73 @@ def _confidence(count: int, capacity: Optional[int]) -> float:
 
 
 class LocationService:
-    """Service for real-time GPS geofencing and rush intelligence."""
+    """Service for real-time GPS geofencing and rush intelligence (Firestore)."""
 
     STALE_THRESHOLD_MINUTES = 5
 
     @staticmethod
-    async def match_location(db: AsyncSession, lat: float, lng: float) -> Optional[dict[str, Any]]:
+    async def match_location(lat: float, lng: float) -> Optional[dict[str, Any]]:
         """Return the nearest campus location if the coordinate falls inside its geofence."""
-        result = await db.execute(select(CampusLocation))
-        locations = result.scalars().all()
+        if db is None:
+            return None
+        locations_ref = db.collection("campus_locations").stream()
         best: Optional[dict[str, Any]] = None
         best_dist = float("inf")
-        for loc in locations:
-            radius = loc.geofence_radius_meters or 80.0
-            dist = _haversine(lat, lng, loc.latitude, loc.longitude)
+        for doc in locations_ref:
+            loc = doc.to_dict()
+            loc_lat = loc.get("latitude")
+            loc_lng = loc.get("longitude")
+            if loc_lat is None or loc_lng is None:
+                continue
+            radius = loc.get("geofence_radius_meters", 80.0)
+            dist = _haversine(lat, lng, loc_lat, loc_lng)
             if dist <= radius and dist < best_dist:
                 best_dist = dist
                 best = {
-                    "id": loc.id,
-                    "name": loc.name,
-                    "location_type": str(loc.location_type),
-                    "latitude": loc.latitude,
-                    "longitude": loc.longitude,
+                    "id": doc.id,
+                    "name": loc.get("name", ""),
+                    "location_type": str(loc.get("location_type", "")),
+                    "latitude": loc_lat,
+                    "longitude": loc_lng,
                     "geofence_radius_meters": radius,
                     "distance_meters": round(dist, 1),
-                    "capacity": loc.capacity,
-                    "operational_status": loc.operational_status or "operational",
+                    "capacity": loc.get("capacity"),
+                    "operational_status": loc.get("operational_status", "operational"),
                 }
         return best
 
     @staticmethod
     async def update_user_location(
-        db: AsyncSession,
         user_id: Any,
         latitude: float,
         longitude: float,
         accuracy: Optional[float] = None,
         timestamp: Optional[datetime] = None,
     ) -> Optional[dict[str, Any]]:
-        """Upsert the user's real GPS location and attempt geofence matching.
-
-        Also stores the matched ``location_id`` and ``location_name`` directly
-        on the :class:`UserLocationState` record so that rush aggregation
-        queries can use an indexed lookup instead of re-running geofence
-        matching for every user.
-        """
+        """Upsert the user's real GPS location and attempt geofence matching."""
+        if db is None:
+            return None
         now = timestamp or datetime.now(timezone.utc)
         if timestamp is None:
             timestamp = now
 
-        result = await db.execute(
-            select(UserLocationState).where(UserLocationState.user_id == user_id)
-        )
-        state = result.scalar_one_or_none()
-
-        # Geofence match first so we can store it on the state record
-        matched = await LocationService.match_location(db, latitude, longitude)
+        matched = await LocationService.match_location(latitude, longitude)
         matched_loc_id = matched["id"] if matched else None
         matched_loc_name = matched["name"] if matched else None
 
-        if state:
-            state.latitude = latitude
-            state.longitude = longitude
-            state.accuracy = accuracy
-            state.timestamp = timestamp
-            state.tracking_enabled = True
-            state.location_status = "LIVE"
-            state.last_updated = now
-            state.location_id = matched_loc_id
-            state.location_name = matched_loc_name
-        else:
-            state = UserLocationState(
-                user_id=user_id,
-                latitude=latitude,
-                longitude=longitude,
-                accuracy=accuracy,
-                timestamp=timestamp,
-                tracking_enabled=True,
-                location_status="LIVE",
-                last_updated=now,
-                location_id=matched_loc_id,
-                location_name=matched_loc_name,
-            )
-            db.add(state)
-
-        await db.commit()
-        await db.refresh(state)
+        doc_ref = db.collection("user_location_states").document(str(user_id))
+        doc_ref.set({
+            "user_id": str(user_id),
+            "latitude": latitude,
+            "longitude": longitude,
+            "accuracy": accuracy,
+            "timestamp": timestamp.isoformat(),
+            "tracking_enabled": True,
+            "location_status": "LIVE",
+            "last_updated": now.isoformat(),
+            "location_id": matched_loc_id,
+            "location_name": matched_loc_name,
+        }, merge=True)
 
         return {
             "user_id": str(user_id),
@@ -156,190 +133,232 @@ class LocationService:
         }
 
     @staticmethod
-    async def disable_user_location(db: AsyncSession, user_id: Any) -> None:
+    async def disable_user_location(user_id: Any) -> None:
         """Mark a user's location tracking as disabled and clear coordinates."""
-        result = await db.execute(
-            select(UserLocationState).where(UserLocationState.user_id == user_id)
-        )
-        state = result.scalar_one_or_none()
-        if state:
-            state.tracking_enabled = False
-            state.location_status = "OFF"
-            state.latitude = None
-            state.longitude = None
-            state.location_id = None
-            state.location_name = None
-            state.last_updated = datetime.now(timezone.utc)
-            await db.commit()
+        if db is None:
+            return
+        doc_ref = db.collection("user_location_states").document(str(user_id))
+        doc_ref.set({
+            "tracking_enabled": False,
+            "location_status": "OFF",
+            "latitude": None,
+            "longitude": None,
+            "location_id": None,
+            "location_name": None,
+            "last_updated": datetime.now(timezone.utc).isoformat(),
+        }, merge=True)
 
     @staticmethod
-    async def get_rush_state(db: AsyncSession) -> list[dict[str, Any]]:
-        """Compute current rush state from real GPS locations, respecting admin overrides.
+    async def get_rush_state() -> list[dict[str, Any]]:
+        """Compute current rush state from real GPS locations, respecting admin overrides."""
+        if db is None:
+            return []
 
-        Uses the stored ``location_id`` on :class:`UserLocationState` when
-        available (set by :meth:`update_user_location`), falling back to
-        geofence re-matching for legacy records that lack it.
-        """
-        locations_result = await db.execute(select(CampusLocation))
-        locations = locations_result.scalars().all()
+        # Fetch all campus locations
+        locations_ref = db.collection("campus_locations").stream()
+        locations: list[dict[str, Any]] = []
+        for doc in locations_ref:
+            loc = doc.to_dict()
+            loc["_doc_id"] = doc.id
+            locations.append(loc)
 
-        location_map: dict[int, CampusLocation] = {loc.id: loc for loc in locations}
-        gps_total_users: dict[int, int] = {loc.id: 0 for loc in locations}
+        location_map: dict[str, dict] = {loc["_doc_id"]: loc for loc in locations}
+        gps_total_users: dict[str, int] = {loc["_doc_id"]: 0 for loc in locations}
 
-        result = await db.execute(
-            select(UserLocationState).where(UserLocationState.tracking_enabled == True)
+        # Fetch active user location states
+        user_states_ref = (
+            db.collection("user_location_states")
+            .where("tracking_enabled", "==", True)
+            .stream()
         )
-        user_states = result.scalars().all()
 
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(minutes=LocationService.STALE_THRESHOLD_MINUTES)
 
-        for us in user_states:
-            if us.latitude is None or us.longitude is None:
+        for doc in user_states_ref:
+            us = doc.to_dict()
+            lat = us.get("latitude")
+            lng = us.get("longitude")
+            if lat is None or lng is None:
                 continue
-            if us.timestamp:
-                ts = us.timestamp
-                if ts.tzinfo is None:
-                    ts = ts.replace(tzinfo=timezone.utc)
-                if ts < cutoff:
-                    continue
+            ts_str = us.get("timestamp")
+            if ts_str:
+                try:
+                    ts = datetime.fromisoformat(ts_str)
+                    if ts.tzinfo is None:
+                        ts = ts.replace(tzinfo=timezone.utc)
+                    if ts < cutoff:
+                        continue
+                except (ValueError, TypeError):
+                    pass
 
-            # Fast path: use pre-computed location_id if available
-            if us.location_id is not None and us.location_id in location_map:
-                gps_total_users[us.location_id] = gps_total_users.get(us.location_id, 0) + 1
+            loc_id = us.get("location_id")
+            if loc_id is not None and loc_id in location_map:
+                gps_total_users[loc_id] = gps_total_users.get(loc_id, 0) + 1
             else:
-                # Fallback: geofence match for legacy records
-                matched = LocationService._sync_match_location(
-                    location_map.values(), us.latitude, us.longitude
-                )
+                matched = LocationService._sync_match_location(locations, lat, lng)
                 if matched:
                     gps_total_users[matched["id"]] = gps_total_users.get(matched["id"], 0) + 1
 
-        result = await db.execute(
-            select(AdminRushOverride).where(AdminRushOverride.is_active == True)
+        # Fetch active admin overrides
+        overrides_ref = (
+            db.collection("admin_rush_overrides")
+            .where("is_active", "==", True)
+            .stream()
         )
-        overrides = result.scalars().all()
+        overrides = [doc.to_dict() | {"_doc_id": doc.id} for doc in overrides_ref]
 
-        rush_by_location: dict[int, dict[str, Any]] = {}
+        result = []
         for loc in locations:
-            count = gps_total_users.get(loc.id, 0)
-            capacity = loc.capacity
+            loc_id = loc["_doc_id"]
+            count = gps_total_users.get(loc_id, 0)
+            capacity = loc.get("capacity")
             level = _rush_level(count, capacity)
             conf = _confidence(count, capacity)
 
             override = None
             for ov in overrides:
-                if ov.location_id == loc.id:
-                    if ov.expires_at > now:
-                        override = ov
+                if ov.get("location_id") == loc_id:
+                    expires_str = ov.get("expires_at", "")
+                    try:
+                        expires_at = datetime.fromisoformat(expires_str)
+                        if expires_at.tzinfo is None:
+                            expires_at = expires_at.replace(tzinfo=timezone.utc)
+                        if expires_at > now:
+                            override = ov
+                    except (ValueError, TypeError):
+                        pass
                     break
 
             if override:
-                rush_by_location[loc.id] = {
-                    "location_id": loc.id,
-                    "location_name": loc.name,
-                    "current_count": override.people_count,
+                result.append({
+                    "location_id": loc_id,
+                    "location_name": loc.get("name", ""),
+                    "current_count": override.get("people_count", 0),
                     "capacity": capacity,
-                    "rush_level": override.rush_level,
+                    "rush_level": override.get("rush_level", "LOW"),
                     "confidence": 1.0,
                     "source": "ADMIN_OVERRIDE",
-                    "override_reason": override.reason,
-                    "expires_at": override.expires_at.isoformat(),
+                    "override_reason": override.get("reason"),
+                    "expires_at": override.get("expires_at"),
                     "last_updated": now.isoformat(),
-                }
+                })
             else:
-                rush_by_location[loc.id] = {
-                    "location_id": loc.id,
-                    "location_name": loc.name,
+                result.append({
+                    "location_id": loc_id,
+                    "location_name": loc.get("name", ""),
                     "current_count": count,
                     "capacity": capacity,
                     "rush_level": level,
                     "confidence": conf,
                     "source": "GPS",
                     "last_updated": now.isoformat(),
-                }
+                })
 
-        return [rush_by_location[loc.id] for loc in locations if loc.id in rush_by_location]
+        return result
 
     @staticmethod
-    async def get_active_override(db: AsyncSession, location_id: int) -> Optional[AdminRushOverride]:
+    async def get_active_override(location_id: str) -> Optional[dict[str, Any]]:
         """Return an active admin override for a location, or None."""
-        result = await db.execute(
-            select(AdminRushOverride)
-            .where(AdminRushOverride.location_id == location_id)
-            .where(AdminRushOverride.is_active == True)
-        )
-        ov = result.scalar_one_or_none()
-        if ov and ov.expires_at <= datetime.now(timezone.utc):
+        if db is None:
             return None
-        return ov
+        overrides_ref = (
+            db.collection("admin_rush_overrides")
+            .where("location_id", "==", location_id)
+            .where("is_active", "==", True)
+            .stream()
+        )
+        now = datetime.now(timezone.utc)
+        for doc in overrides_ref:
+            ov = doc.to_dict()
+            try:
+                expires_at = datetime.fromisoformat(ov.get("expires_at", ""))
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at > now:
+                    return ov
+            except (ValueError, TypeError):
+                pass
+        return None
 
     @staticmethod
     async def create_override(
-        db: AsyncSession,
-        location_id: int,
+        location_id: str,
         admin_user_id: Any,
         people_count: int,
         rush_level: str,
         reason: Optional[str],
         duration_minutes: int,
-    ) -> AdminRushOverride:
+    ) -> dict[str, Any]:
         """Create or replace an admin override for a location."""
+        if db is None:
+            return {}
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(minutes=duration_minutes)
 
-        result = await db.execute(
-            select(AdminRushOverride)
-            .where(AdminRushOverride.location_id == location_id)
-            .where(AdminRushOverride.is_active == True)
+        # Deactivate existing overrides for this location
+        existing_ref = (
+            db.collection("admin_rush_overrides")
+            .where("location_id", "==", location_id)
+            .where("is_active", "==", True)
+            .stream()
         )
-        existing = result.scalar_one_or_none()
-        if existing:
-            existing.is_active = False
-            db.add(existing)
+        for doc in existing_ref:
+            doc.reference.update({"is_active": False})
 
-        override = AdminRushOverride(
-            location_id=location_id,
-            admin_user_id=admin_user_id,
-            people_count=people_count,
-            rush_level=rush_level,
-            reason=reason,
-            duration_minutes=duration_minutes,
-            expires_at=expires_at,
-            is_active=True,
-        )
-        db.add(override)
-        await db.commit()
-        await db.refresh(override)
-        return override
+        # Create new override
+        override_data = {
+            "location_id": location_id,
+            "admin_user_id": str(admin_user_id),
+            "people_count": people_count,
+            "rush_level": rush_level,
+            "reason": reason,
+            "duration_minutes": duration_minutes,
+            "expires_at": expires_at.isoformat(),
+            "is_active": True,
+            "created_at": now.isoformat(),
+        }
+        doc_ref = db.collection("admin_rush_overrides").add(override_data)
+        return override_data
 
     @staticmethod
-    async def expire_stale_overrides(db: AsyncSession) -> int:
+    async def expire_stale_overrides() -> int:
         """Mark expired overrides as inactive. Returns count of deactivated overrides."""
+        if db is None:
+            return 0
         now = datetime.now(timezone.utc)
-        result = await db.execute(
-            select(AdminRushOverride).where(
-                AdminRushOverride.is_active == True,
-                AdminRushOverride.expires_at <= now,
-            )
+        overrides_ref = (
+            db.collection("admin_rush_overrides")
+            .where("is_active", "==", True)
+            .stream()
         )
-        stale = result.scalars().all()
-        if stale:
-            for ov in stale:
-                ov.is_active = False
-                db.add(ov)
-            await db.commit()
-        return len(stale)
+        count = 0
+        for doc in overrides_ref:
+            ov = doc.to_dict()
+            try:
+                expires_at = datetime.fromisoformat(ov.get("expires_at", ""))
+                if expires_at.tzinfo is None:
+                    expires_at = expires_at.replace(tzinfo=timezone.utc)
+                if expires_at <= now:
+                    doc.reference.update({"is_active": False})
+                    count += 1
+            except (ValueError, TypeError):
+                pass
+        return count
 
     @staticmethod
-    def _sync_match_location(locations, lat: float, lng: float) -> Optional[dict[str, Any]]:
+    def _sync_match_location(locations: list[dict], lat: float, lng: float) -> Optional[dict[str, Any]]:
         """Synchronous geofence match used internally during rush calculation."""
         best = None
         best_dist = float("inf")
         for loc in locations:
-            radius = loc.geofence_radius_meters or 80.0
-            dist = _haversine(lat, lng, loc.latitude, loc.longitude)
+            loc_lat = loc.get("latitude")
+            loc_lng = loc.get("longitude")
+            if loc_lat is None or loc_lng is None:
+                continue
+            radius = loc.get("geofence_radius_meters", 80.0)
+            dist = _haversine(lat, lng, loc_lat, loc_lng)
             if dist <= radius and dist < best_dist:
                 best_dist = dist
-                best = {"id": loc.id, "name": loc.name}
+                best = {"id": loc.get("_doc_id", ""), "name": loc.get("name", "")}
         return best

@@ -1,34 +1,37 @@
-"use client"
+"use client";
 
-import { createContext, useContext, ReactNode } from "react"
-import { Bell, Check } from "lucide-react"
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { useNotifications as useNotificationsApi } from "@/hooks/use-notifications"
-import { formatRelativeTime } from "@/lib/utils"
+import { createContext, useContext, ReactNode, useState, useEffect, useRef } from "react";
+import { Bell, Check, ExternalLink, Trash2, CheckCircle2, AlertTriangle, BookOpen, Calendar, Info } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { useNotifications as useNotificationsApi } from "@/hooks/use-notifications";
+import { formatRelativeTime } from "@/lib/utils";
+import { useRouter } from "next/navigation";
 
 export interface NotificationItem {
-  id: string
-  event: string
-  reason: string
-  priority: string
-  timestamp: string
-  read: boolean
+  id: string;
+  recipient_id: string;
+  event: string;
+  reason: string;
+  priority: string;
+  timestamp: string;
+  read: boolean;
+  title?: string;
+  link?: string;
 }
 
 interface NotificationContextType {
-  notifications: NotificationItem[]
-  unreadCount: number
-  isLoading: boolean
-  markAsRead: (id: string) => void
-  markAllRead: () => void
-  deleteNotification: (id: string) => void
-  refetch: () => void
+  notifications: NotificationItem[];
+  unreadCount: number;
+  isLoading: boolean;
+  markAsRead: (id: string) => void;
+  markAllRead: () => void;
+  deleteNotification: (id: string) => void;
+  refetch: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextType | undefined>(undefined)
+const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
 export function NotificationProvider({ children }: { children: ReactNode }) {
   const {
@@ -39,7 +42,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     markAllRead,
     deleteNotification,
     refetch,
-  } = useNotificationsApi()
+  } = useNotificationsApi();
 
   return (
     <NotificationContext.Provider
@@ -55,45 +58,85 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     >
       {children}
     </NotificationContext.Provider>
-  )
+  );
 }
 
 export function useNotifications() {
-  const context = useContext(NotificationContext)
+  const context = useContext(NotificationContext);
   if (!context) {
-    throw new Error("useNotifications must be used within NotificationProvider")
+    throw new Error("useNotifications must be used within NotificationProvider");
   }
-  return context
+  return context;
 }
 
 export function NotificationCenter() {
-  const { notifications, unreadCount, isLoading, markAsRead, markAllRead } = useNotifications()
-  const [isOpen, setIsOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  const { notifications, unreadCount, isLoading, markAsRead, markAllRead, deleteNotification } = useNotifications();
+  const [isOpen, setIsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [dropdownCoords, setDropdownCoords] = useState<{ top: number; left: number; width: number }>({
+    top: 64,
+    left: 268,
+    width: 384,
+  });
+  const router = useRouter();
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
-  const priorityColors: Record<string, string> = {
-    high: "text-campus-red",
-    medium: "text-campus-yellow",
-    low: "text-campus-blue",
-    info: "text-gray-400",
-  }
+  useEffect(() => {
+    if (isOpen && buttonRef.current && typeof window !== "undefined") {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const width = Math.min(384, window.innerWidth - 32);
+      // When opened from top-left sidebar, open to the right side into the visible page area
+      let left = rect.left;
+      if (rect.right < 280 && window.innerWidth >= 640) {
+        left = Math.max(16, rect.right + 12);
+      }
+      // Ensure it never overflows off the right edge:
+      if (left + width > window.innerWidth - 16) {
+        left = window.innerWidth - 16 - width;
+      }
+      // Ensure it never overflows off the left edge:
+      if (left < 16) {
+        left = 16;
+      }
+
+      setDropdownCoords({
+        top: Math.max(16, rect.bottom + 8),
+        left,
+        width,
+      });
+    }
+  }, [isOpen]);
+
+  const getNotificationIcon = (item: NotificationItem) => {
+    if (item.event.toLowerCase().includes("cancel")) {
+      return <AlertTriangle className="w-4 h-4 text-amber-400" />;
+    }
+    if (item.event.toLowerCase().includes("material") || item.event.toLowerCase().includes("note")) {
+      return <BookOpen className="w-4 h-4 text-cyan-400" />;
+    }
+    if (item.event.toLowerCase().includes("event") || item.event.toLowerCase().includes("hackathon")) {
+      return <Calendar className="w-4 h-4 text-purple-400" />;
+    }
+    return <Info className="w-4 h-4 text-[#A51C30]" />;
+  };
 
   return (
     <div className="relative">
       <Button
+        ref={buttonRef}
         variant="ghost"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative"
-        aria-label="Notifications"
+        className="relative p-2 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
+        aria-label="Campus Central Notifications"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-campus-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+          <span className="absolute -top-1 -right-1 bg-[#A51C30] text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-[#0a0a0a] animate-pulse">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
@@ -102,76 +145,105 @@ export function NotificationCenter() {
       {isOpen && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
-          <Card className="absolute right-0 mt-2 w-96 max-h-[500px] overflow-y-auto z-50 p-0">
-            <div className="p-4 border-b border-white/10 flex items-center justify-between">
-              <h3 className="font-semibold text-white">Notifications</h3>
+          <Card 
+            style={{
+              position: "fixed",
+              top: `${dropdownCoords.top}px`,
+              left: `${dropdownCoords.left}px`,
+              width: `${dropdownCoords.width}px`,
+            }}
+            className="max-h-[520px] overflow-y-auto z-50 p-0 bg-[#141424] border-white/15 shadow-2xl backdrop-blur-2xl rounded-2xl"
+          >
+            <div className="p-4 border-b border-white/10 flex items-center justify-between bg-[#10101c]/80 sticky top-0 backdrop-blur-md z-10">
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-[#A51C30]" />
+                <h3 className="font-bold text-sm text-white">Central Campus Inbox</h3>
+                {unreadCount > 0 && (
+                  <span className="text-[10px] bg-[#A51C30]/20 text-[#A51C30] font-mono px-2 py-0.5 rounded-full border border-[#A51C30]/30">
+                    {unreadCount} new
+                  </span>
+                )}
+              </div>
+
               {unreadCount > 0 && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs text-campus-blue hover:text-campus-blue/80"
+                <button
+                  className="text-xs text-[#A51C30] hover:text-[#d33a50] font-medium transition-colors"
                   onClick={() => markAllRead()}
                 >
                   Mark all read
-                </Button>
+                </button>
               )}
             </div>
+
             <div className="divide-y divide-white/5">
               {isLoading && (
                 <div className="p-4 space-y-3">
                   <div className="h-12 w-full rounded bg-white/5 animate-pulse" />
                   <div className="h-12 w-full rounded bg-white/5 animate-pulse" />
-                  <div className="h-12 w-full rounded bg-white/5 animate-pulse" />
                 </div>
               )}
+
               {!isLoading && notifications.length === 0 && (
-                <div className="p-6 text-center text-sm text-gray-400">
-                  You&apos;re all caught up.
+                <div className="p-8 text-center text-xs text-gray-400 space-y-1">
+                  <CheckCircle2 className="w-6 h-6 text-emerald-400 mx-auto mb-2" />
+                  <p className="font-semibold text-white">You're all caught up!</p>
+                  <p>No new timetable changes or campus alerts.</p>
                 </div>
               )}
+
               {!isLoading &&
                 notifications.map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-4 hover:bg-white/5 transition-colors ${
-                      !notification.read ? "bg-campus-blue/5" : ""
+                    onClick={() => {
+                      markAsRead(notification.id);
+                      if (notification.link) {
+                        setIsOpen(false);
+                        router.push(notification.link);
+                      }
+                    }}
+                    className={`p-4 hover:bg-white/5 transition-all cursor-pointer ${
+                      !notification.read ? "bg-[#A51C30]/10 border-l-2 border-[#A51C30]" : ""
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge
-                            variant={
-                              notification.priority === "high"
-                                ? "danger"
-                                : notification.priority === "medium"
-                                ? "warning"
-                                : "default"
-                            }
-                          >
-                            {notification.priority}
-                          </Badge>
-                          <span className="text-sm font-medium text-white truncate">
+                    <div className="flex items-start gap-3">
+                      <span className="p-2 rounded-xl bg-white/5 border border-white/5 flex-shrink-0 mt-0.5">
+                        {getNotificationIcon(notification)}
+                      </span>
+
+                      <div className="flex-1 min-w-0 space-y-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <h4 className="text-xs font-bold text-white truncate">
                             {notification.event}
+                          </h4>
+                          <span className="text-[10px] text-gray-400 flex-shrink-0">
+                            {mounted ? formatRelativeTime(notification.timestamp) : ""}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-400 break-words">
+
+                        <p className="text-xs text-gray-300 break-words leading-relaxed line-clamp-3">
                           {notification.reason}
                         </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          {mounted ? formatRelativeTime(notification.timestamp) : ""}
-                        </p>
+
+                        <div className="flex items-center justify-between pt-1">
+                          {notification.link ? (
+                            <span className="text-[10px] text-[#A51C30] flex items-center gap-1 font-semibold hover:underline">
+                              View Section <ExternalLink className="w-2.5 h-2.5" />
+                            </span>
+                          ) : <div />}
+
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteNotification(notification.id);
+                            }}
+                            className="text-gray-500 hover:text-red-400 p-1"
+                            title="Clear"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                       </div>
-                      {!notification.read && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => markAsRead(notification.id)}
-                          aria-label="Mark as read"
-                        >
-                          <Check className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
                   </div>
                 ))}
@@ -180,5 +252,5 @@ export function NotificationCenter() {
         </>
       )}
     </div>
-  )
+  );
 }

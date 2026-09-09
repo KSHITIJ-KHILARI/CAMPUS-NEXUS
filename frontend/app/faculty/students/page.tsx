@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Users, GraduationCap, Eye, Sparkles } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 import { BackButton } from "@/components/ui/back-button";
 import { StudentDetailsModal } from "@/components/campus/StudentDetailsModal";
 
@@ -20,7 +20,7 @@ export default function FacultyStudentsPage() {
       setLoading(true);
       setError(null);
       try {
-        const data = await apiClient.get<any[]>("/faculty/students");
+        const data = await api.faculty.getStudents();
         setStudents(data || []);
       } catch (err: any) {
         setError(err?.message || "Failed to load student roster");

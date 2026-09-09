@@ -1,3 +1,4 @@
+from pydantic import ConfigDict
 """Pydantic schemas for Timetable and ClassSession models."""
 
 from pydantic import BaseModel
@@ -36,8 +37,7 @@ class ClassSessionInDB(ClassSessionBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ClassSession(ClassSessionInDB):
@@ -68,8 +68,7 @@ class TimetableInDB(TimetableBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class Timetable(TimetableInDB):

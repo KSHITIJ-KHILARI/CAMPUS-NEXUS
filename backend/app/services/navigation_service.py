@@ -1,12 +1,12 @@
-"""Navigation service for Campus NEXUS."""
+"""Navigation service for Campus NEXUS — Firestore-backed."""
 
 from typing import Any
 
-from app.models import Building, CampusLocation, Lift, Facility
+from app.core.firebase import db
 
 
 class NavigationService:
-    """Service for navigation and route calculation."""
+    """Service for navigation and route calculation (Firestore)."""
 
     async def calculate_route(
         self,

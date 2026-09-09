@@ -508,7 +508,7 @@ canvas {
   animation: pulse-subtle 2s infinite ease-in-out;
 }
 
-/* Micro-interactions */
+/* Micro-interactions & Smooth Transitions */
 button:active:not(:disabled) {
   transform: scale(0.98);
   transition: transform 0.08s ease;
@@ -517,6 +517,49 @@ button:active:not(:disabled) {
 /* Page transitions */
 .page-transition {
   animation: fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth Interactive Utilities */
+.interactive-card {
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, box-shadow;
+}
+
+.interactive-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px -10px rgba(0, 0, 0, 0.5), 0 0 15px -3px rgba(165, 28, 48, 0.15);
+  border-color: rgba(165, 28, 48, 0.35);
+}
+
+.somaiya-glow-hover {
+  transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.somaiya-glow-hover:hover {
+  box-shadow: 0 0 20px -3px rgba(165, 28, 48, 0.3);
+  border-color: rgba(165, 28, 48, 0.5);
+}
+
+/* Smooth scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(165, 28, 48, 0.5);
 }
 
 /* Respect user preference for reduced motion */

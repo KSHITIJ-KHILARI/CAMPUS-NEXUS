@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Search, CheckCircle, AlertCircle, X } from "lucide-react";
-import { apiClient } from "@/lib/api-client";
+import { api } from "@/lib/api-client";
 
 export function ReportLostFoundModal({
   isOpen,
@@ -31,14 +31,14 @@ export function ReportLostFoundModal({
     setErrorMsg("");
 
     try {
-      await apiClient.post("/lost-found/report", {
+      await api.lostFound.reportItem({
         title,
         type,
         category,
         location,
         description,
       });
-      setStatusMsg(`Report for '${title}' successfully filed and saved to PostgreSQL!`);
+      setStatusMsg(`Report for '${title}' successfully filed!`);
       if (onReportCreated) onReportCreated();
       setTimeout(() => {
         onClose();
