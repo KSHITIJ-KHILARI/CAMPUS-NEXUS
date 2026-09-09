@@ -3,7 +3,7 @@
   <p align="center">
     <strong>AI-Powered Digital Twin & Campus Intelligence Platform</strong>
     <br />
-    <em>Somaiya Vidyavihar University, Mumbai</em>
+    <em>Built By Kshitij,Harshit,Piyush</em>
   </p>
   <p align="center">
     <img src="https://img.shields.io/badge/Next.js-14-black?logo=next.js" alt="Next.js" />
