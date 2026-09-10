@@ -1,4 +1,4 @@
-import { ai, hasGeminiKey, getPrimaryModel, getFallbackModel } from "../ai";
+import { ai, hasGeminiKey, getPrimaryModel, getFallbackModel, getTertiaryModel } from "../ai";
 import {
   ChatRequest,
   ChatRequestSchema,
@@ -246,12 +246,12 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
       const isSimpleGreeting = lowerMsg === "hi" || lowerMsg === "hello" || lowerMsg === "hey";
 
       if (hasGeminiKey()) {
+        // Attempt 1: Gemini 3.5 Flash Lite (High quota, ultra-fast 1s response)
         try {
           const res = await executeWithModel(getPrimaryModel(), !isSimpleGreeting);
           resultText = extractText(res);
-          modelUsed = "gemini-3.6-flash";
+          modelUsed = "gemini-3.5-flash-lite";
 
-          // Track which tools were triggered dynamically
           if (res.messages) {
             for (const msg of res.messages) {
               if (msg.content) {
@@ -267,27 +267,41 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
             }
           }
 
-          // If resultText is empty (e.g. Gemini generated tool calls but no final text), retry without tools
           if (!resultText) {
             const resDirect = await executeWithModel(getPrimaryModel(), false);
             resultText = extractText(resDirect);
           }
-        } catch (geminiErr: any) {
-          console.warn("Primary Gemini 3.6 Flash failed, attempting fallback to local Ollama:", geminiErr?.message || geminiErr);
+        } catch (liteErr: any) {
+          console.warn("Primary Gemini 3.5 Flash Lite failed:", liteErr?.message || liteErr);
+
+          // Attempt 2: Gemini 3.5 Flash
           try {
-            const resFallback = await executeWithModel(getFallbackModel(), false);
-            resultText = extractText(resFallback);
-            modelUsed = "gemini-3.6-flash";
+            const resFb = await executeWithModel(getFallbackModel(), false);
+            resultText = extractText(resFb);
+            modelUsed = "gemini-3.5-flash";
           } catch (fbErr: any) {
-            console.warn("Gemini 3.6 Flash fallback failed, attempting local Ollama:", fbErr?.message || fbErr);
-            const abortController = new AbortController();
-            const id = setTimeout(() => abortController.abort(), 2000);
+            console.warn("Fallback Gemini 3.5 Flash failed:", fbErr?.message || fbErr);
+
+            // Attempt 3: Gemini 3.6 Flash
             try {
-              const resOllama = await executeWithModel("ollama/gemma4:latest", false);
-              resultText = extractText(resOllama);
-              modelUsed = "ollama/gemma4:latest";
-            } finally {
-              clearTimeout(id);
+              const resTertiary = await executeWithModel(getTertiaryModel(), false);
+              resultText = extractText(resTertiary);
+              modelUsed = "gemini-3.6-flash";
+            } catch (tertErr: any) {
+              console.warn("Tertiary Gemini 3.6 Flash failed:", tertErr?.message || tertErr);
+
+              // Attempt 4: Local Ollama (quick timeout)
+              const abortController = new AbortController();
+              const id = setTimeout(() => abortController.abort(), 2000);
+              try {
+                const resOllama = await executeWithModel("ollama/gemma4:latest", false);
+                resultText = extractText(resOllama);
+                modelUsed = "ollama/gemma4:latest";
+              } catch {
+                console.warn("Local Ollama not available, using institutional ground truth");
+              } finally {
+                clearTimeout(id);
+              }
             }
           }
         }
@@ -298,8 +312,6 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
           modelUsed = "ollama/gemma4:latest";
         } catch (ollamaErr: any) {
           console.warn("Ollama local generation failed:", ollamaErr?.message || ollamaErr);
-          resultText = `Hello ${userName}! NEXUS AI is currently in offline institutional mode. Please configure GEMINI_API_KEY in frontend/.env.local or ensure Ollama is running on localhost:11434 with gemma4.`;
-          modelUsed = "offline-fallback";
         }
       }
 

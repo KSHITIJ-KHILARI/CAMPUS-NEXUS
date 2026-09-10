@@ -45,12 +45,19 @@ export function hasGeminiKey(): boolean {
 
 export function getPrimaryModel() {
   if (hasGeminiKey()) {
-    return googleAI.model("gemini-3.6-flash");
+    return googleAI.model("gemini-3.5-flash-lite");
   }
   return "ollama/gemma4:latest";
 }
 
 export function getFallbackModel() {
+  if (hasGeminiKey()) {
+    return googleAI.model("gemini-3.5-flash");
+  }
+  return "ollama/gemma4:latest";
+}
+
+export function getTertiaryModel() {
   if (hasGeminiKey()) {
     return googleAI.model("gemini-3.6-flash");
   }
