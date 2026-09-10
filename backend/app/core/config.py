@@ -31,10 +31,6 @@ class Settings(BaseSettings):
     # See app/core/firebase.py for the Firestore client singleton.
 
     # --- Security & Hosts ---
-    SECRET_KEY: str = "dev-secret-key-change-in-production"
-    ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
-    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     BCRYPT_ROUNDS: int = 12
 
     ALLOWED_HOSTS: list[str] = Field(default_factory=lambda: ["*", "localhost", "127.0.0.1", "campus-nexus-6z4h.onrender.com"])
@@ -46,9 +42,11 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             import json
             try:
-                return json.loads(v)
+                hosts = json.loads(v)
+                return [h.replace("http://", "").replace("https://", "").strip("/") for h in hosts]
             except (json.JSONDecodeError, ValueError):
-                return [s.strip() for s in v.strip("[]").split(",") if s.strip()]
+                raw_hosts = [s.strip() for s in v.strip("[]").split(",") if s.strip()]
+                return [h.replace("http://", "").replace("https://", "").strip("/") for h in raw_hosts]
         if isinstance(v, list):
             return v
         return ["*", "localhost", "127.0.0.1", "campus-nexus-6z4h.onrender.com"]
@@ -107,6 +105,7 @@ class Settings(BaseSettings):
     NEXUS_API_KEY: str | None = None
     GOOGLE_MAPS_API_KEY: str | None = None
     OPENAI_API_KEY: str | None = None
+    GEMINI_API_KEY: str | None = None
 
     # --- Supabase ---
     SUPABASE_URL: str | None = None
@@ -115,8 +114,8 @@ class Settings(BaseSettings):
 
     @property
     def EFFECTIVE_AI_KEY(self) -> str | None:
-        """Return NEXUS_API_KEY as single source of truth, fallback to OPENAI_API_KEY."""
-        return self.NEXUS_API_KEY or self.OPENAI_API_KEY
+        """Return NEXUS_API_KEY as single source of truth, fallback to GEMINI or OPENAI."""
+        return self.NEXUS_API_KEY or self.GEMINI_API_KEY or self.OPENAI_API_KEY
 
     # --- Geospatial ---
     DEFAULT_SEARCH_RADIUS_METERS: int = 500

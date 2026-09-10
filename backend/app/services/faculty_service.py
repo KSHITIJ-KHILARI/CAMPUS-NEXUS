@@ -9,6 +9,8 @@ Provides:
 
 from datetime import datetime, time as dt_time
 from typing import Any
+import asyncio
+from cachetools import TTLCache
 
 from app.core.firebase import db
 
@@ -28,19 +30,29 @@ class FacultyService:
     """Business logic for faculty data (Firestore)."""
 
     def __init__(self) -> None:
-        pass  # No db session needed — uses Firestore singleton
+        self._cache = TTLCache(maxsize=50, ttl=300) # 5 minutes TTL
 
     async def list_faculty_directory(self, search: str | None = None, department: str | None = None) -> list[dict[str, Any]]:
         """Return faculty directory with live status derived from schedule + IST."""
         if db is None:
             return []
 
-        faculty_ref = db.collection("faculty").stream()
+        cache_key = "faculty_directory_all"
+        if cache_key in self._cache:
+            faculty_list = self._cache[cache_key]
+        else:
+            def fetch_fac():
+                return list(db.collection("faculty").stream())
+            faculty_list = await asyncio.to_thread(fetch_fac)
+            self._cache[cache_key] = faculty_list
+
         directory = []
         now_ist = self._now_ist()
         today_day = self._today_day_of_week()
+        
+        schedule_map = await self._get_all_today_schedules(today_day)
 
-        for doc in faculty_ref:
+        for doc in faculty_list:
             fac = doc.to_dict()
             full_name = fac.get("full_name", "")
             dept_name = fac.get("department", "")
@@ -51,7 +63,7 @@ class FacultyService:
             if department and department.lower() not in dept_name.lower():
                 continue
 
-            schedule = await self._get_today_schedule(doc.id, today_day)
+            schedule = schedule_map.get(doc.id, [])
             is_available = fac.get("is_available", True)
             status, next_slot = self._compute_status(is_available, schedule, now_ist)
 
@@ -88,20 +100,25 @@ class FacultyService:
             return []
 
         # 1. Look up student profile
+        def fetch_student():
+            return list(db.collection("students").where("user_id", "==", str(student_user_id)).stream())
+            
+        student_docs = await asyncio.to_thread(fetch_student)
         student_doc = None
-        students_ref = db.collection("students").where("user_id", "==", str(student_user_id)).stream()
-        for doc in students_ref:
+        if student_docs:
+            doc = student_docs[0]
             student_doc = doc.to_dict()
             student_doc["_doc_id"] = doc.id
-            break
 
         # 2. Get enrolled faculty IDs & subjects
         enrolled_faculty_map: dict[str, list[str]] = {}
         student_dept = None
         if student_doc:
             student_dept = student_doc.get("department")
-            enrollments_ref = db.collection("enrollments").where("student_id", "==", student_doc["_doc_id"]).stream()
-            for enroll_doc in enrollments_ref:
+            def fetch_enrollments():
+                return list(db.collection("enrollments").where("student_id", "==", student_doc["_doc_id"]).stream())
+            enroll_docs = await asyncio.to_thread(fetch_enrollments)
+            for enroll_doc in enroll_docs:
                 enroll = enroll_doc.to_dict()
                 fac_id = enroll.get("faculty_id")
                 course_name = enroll.get("course_name", "")
@@ -112,12 +129,21 @@ class FacultyService:
                     enrolled_faculty_map.setdefault(fac_id, []).append(label)
 
         # 3. Query faculty with optional filters
-        faculty_ref = db.collection("faculty").stream()
+        cache_key = "faculty_directory_all"
+        if cache_key in self._cache:
+            faculty_list = self._cache[cache_key]
+        else:
+            def fetch_fac():
+                return list(db.collection("faculty").stream())
+            faculty_list = await asyncio.to_thread(fetch_fac)
+            self._cache[cache_key] = faculty_list
+            
         now_ist = self._now_ist()
         today_day = self._today_day_of_week()
+        schedule_map = await self._get_all_today_schedules(today_day)
 
         relevant_faculty = []
-        for doc in faculty_ref:
+        for doc in faculty_list:
             fac = doc.to_dict()
             full_name = fac.get("full_name", "")
             dept_name = fac.get("department", "")
@@ -136,7 +162,7 @@ class FacultyService:
             elif is_same_dept:
                 relationship = "department_faculty"
 
-            schedule = await self._get_today_schedule(doc.id, today_day)
+            schedule = schedule_map.get(doc.id, [])
             is_available = fac.get("is_available", True)
             status, next_slot = self._compute_status(is_available, schedule, now_ist)
             courses_taught = enrolled_faculty_map.get(doc.id, [])
@@ -181,15 +207,17 @@ class FacultyService:
             return None
 
         # Try direct document lookup first
-        doc_ref = db.collection("faculty").document(faculty_id)
-        doc = doc_ref.get()
+        def fetch_doc():
+            return db.collection("faculty").document(faculty_id).get()
+        doc = await asyncio.to_thread(fetch_doc)
 
         if not doc.exists:
             # Try querying by user_id
-            results = db.collection("faculty").where("user_id", "==", faculty_id).stream()
-            for result_doc in results:
-                doc = result_doc
-                break
+            def fetch_by_user_id():
+                return list(db.collection("faculty").where("user_id", "==", faculty_id).stream())
+            results = await asyncio.to_thread(fetch_by_user_id)
+            if results:
+                doc = results[0]
             else:
                 return None
 
@@ -220,22 +248,30 @@ class FacultyService:
             ],
             "schedule_today": schedule,
         }
-
-    async def _get_today_schedule(self, faculty_id: str, today_day: str) -> list[dict[str, Any]]:
-        """Get today's class sessions for a faculty from Firestore."""
+        
+    async def _get_all_today_schedules(self, today_day: str) -> dict[str, list[dict[str, Any]]]:
+        """Fetch all class sessions for today in one go to prevent N+1 queries."""
         if db is None:
-            return []
-        sessions_ref = (
-            db.collection("class_sessions")
-            .where("faculty_id", "==", faculty_id)
-            .where("day_of_week", "==", today_day)
-            .where("is_cancelled", "==", False)
-            .stream()
-        )
-        schedule = []
-        for doc in sessions_ref:
+            return {}
+        
+        cache_key = f"schedules_{today_day}"
+        if cache_key in self._cache:
+            return self._cache[cache_key]
+
+        def fetch():
+            return list(db.collection("class_sessions")
+                .where("day_of_week", "==", today_day)
+                .where("is_cancelled", "==", False)
+                .stream())
+                
+        docs = await asyncio.to_thread(fetch)
+        schedule_map = {}
+        for doc in docs:
             sess = doc.to_dict()
-            schedule.append({
+            fac_id = sess.get("faculty_id")
+            if not fac_id:
+                continue
+            schedule_map.setdefault(fac_id, []).append({
                 "id": doc.id,
                 "day": (sess.get("day_of_week", today_day) or today_day).capitalize(),
                 "start": sess.get("start_time", ""),
@@ -245,9 +281,18 @@ class FacultyService:
                 "room": sess.get("room", ""),
                 "type": sess.get("session_type", "lecture"),
             })
-        # Sort by start time
-        schedule.sort(key=lambda s: s.get("start", ""))
-        return schedule
+            
+        for scheds in schedule_map.values():
+            scheds.sort(key=lambda s: s.get("start", ""))
+            
+        self._cache[cache_key] = schedule_map
+        return schedule_map
+
+    async def _get_today_schedule(self, faculty_id: str, today_day: str) -> list[dict[str, Any]]:
+        """Get today's class sessions for a faculty from Firestore."""
+        # Use the batch fetch to save queries
+        schedule_map = await self._get_all_today_schedules(today_day)
+        return schedule_map.get(faculty_id, [])
 
     def _compute_status(self, is_available: bool, schedule: list[dict[str, Any]], now_ist: datetime) -> tuple[str, dict[str, Any] | None]:
         """Compute current status and next available slot from schedule + manual availability."""

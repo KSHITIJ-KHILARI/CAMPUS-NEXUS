@@ -11,6 +11,7 @@ import {
   getStoredRooms,
   addCentralNotification,
 } from "@/lib/relationalCampusData";
+import { api } from "@/lib/api-client";
 import {
   Building2,
   DoorOpen,
@@ -41,9 +42,26 @@ export function VacantRoomsView() {
   const [roomsData, setRoomsData] = useState<RoomVacancyInfo[]>([]);
   const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
 
-  const refreshRooms = () => {
-    const data = getVacantRoomsStatus(selectedDay, selectedTime);
-    setRoomsData(data);
+  const refreshRooms = async () => {
+    const baseData = getVacantRoomsStatus(selectedDay, selectedTime);
+    try {
+      const reservations = await api.rooms.getActiveReservations();
+      const mergedData = baseData.map(roomData => {
+        const activeRes = (reservations as any[]).find(r => r.room_number === roomData.room.room_number);
+        if (activeRes) {
+          return {
+            ...roomData,
+            is_vacant: false,
+            status: "OCCUPIED" as const,
+            status_label: activeRes.status === "approved" ? "Occupied (Reserved)" : "Reservation Pending",
+          };
+        }
+        return roomData;
+      });
+      setRoomsData(mergedData);
+    } catch (e) {
+      setRoomsData(baseData);
+    }
   };
 
   useEffect(() => {
@@ -86,16 +104,22 @@ export function VacantRoomsView() {
     return { total, vacant, cancelledFreed, occupied };
   }, [roomsData]);
 
-  const handleQuickReserve = (roomNumber: string) => {
-    setBookingSuccess(`Room ${roomNumber} reserved for your study group (60 mins)! Check in at reception.`);
-    addCentralNotification({
-      title: `Room Reserved: ${roomNumber}`,
-      message: `You have reserved room ${roomNumber} for 60 minutes. Please check in with your Somaiya ID.`,
-      type: "system",
-      link: "/student/rooms",
-      severity: "success",
-    });
-    setTimeout(() => setBookingSuccess(null), 4000);
+  const handleQuickReserve = async (roomNumber: string) => {
+    try {
+      await api.rooms.createReservation({ room_number: roomNumber });
+      setBookingSuccess(`Room ${roomNumber} reservation requested! Pending Admin approval.`);
+      addCentralNotification({
+        title: `Room Reservation Requested: ${roomNumber}`,
+        message: `You have requested to reserve room ${roomNumber}. Please wait for admin approval.`,
+        type: "system",
+        link: "/student/rooms",
+        severity: "info",
+      });
+      setTimeout(() => setBookingSuccess(null), 4000);
+      refreshRooms();
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (

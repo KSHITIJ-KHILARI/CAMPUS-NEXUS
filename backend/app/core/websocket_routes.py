@@ -2,7 +2,6 @@
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from fastapi.security import OAuth2PasswordBearer
-from jose import jwt
 import json
 
 from app.core.config import settings
@@ -29,14 +28,23 @@ async def websocket_endpoint(websocket: WebSocket):
 
         # Verify token
         try:
-            payload = jwt.decode(
-                token,
-                settings.SECRET_KEY,
-                algorithms=[settings.ALGORITHM],
-            )
-            user_id = payload.get("sub")
-        except Exception:
-            await websocket.close(code=4002, reason="Invalid token")
+            from app.core.firebase import auth_client, db
+            payload = auth_client.verify_id_token(token)
+            user_id = payload.get("uid")
+
+            if not user_id:
+                await websocket.close(code=4001, reason="Invalid token: missing uid")
+                return
+                
+            # Fetch user from Firestore to get role
+            doc_ref = db.collection("users").document(user_id)
+            doc = doc_ref.get()
+            if not doc.exists:
+                await websocket.close(code=4001, reason="User not found")
+                return
+                
+        except Exception as e:
+            await websocket.close(code=4001, reason=f"Authentication failed: {str(e)}")
             return
 
         # Connect user

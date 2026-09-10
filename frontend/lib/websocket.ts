@@ -55,6 +55,12 @@ class WebSocketClient {
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
+        // Send authentication message first
+        const token = localStorage.getItem("auth_token");
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+          this.ws.send(JSON.stringify({ token: token || null }));
+        }
+
         this.isConnected = true;
         this.reconnectAttempts = 0;
         this.emit({ type: "connect", payload: {}, timestamp: new Date().toISOString() });

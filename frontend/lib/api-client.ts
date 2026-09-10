@@ -537,6 +537,34 @@ export const api = {
       return createPaginated(list, 1, 20);
     },
     getAvailability: async () => ({ isAvailable: true }),
+    createReservation: async (data: any) => {
+      const uid = auth.currentUser?.uid || "stu-101";
+      const docRef = await addDoc(collection(db, "room_reservations"), {
+        ...data,
+        student_id: uid,
+        status: "pending",
+        reserved_at: new Date().toISOString(),
+      });
+      return { id: docRef.id, ...data, student_id: uid, status: "pending" };
+    },
+    getReservations: async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "room_reservations"));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) { return []; }
+    },
+    updateReservation: async (id: string, data: any) => {
+      try {
+        await updateDoc(doc(db, "room_reservations", id), data);
+      } catch (e) {}
+      return { id, ...data };
+    },
+    getActiveReservations: async () => {
+      try {
+        const snapshot = await getDocs(query(collection(db, "room_reservations"), where("status", "in", ["approved", "pending"])));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) { return []; }
+    }
   },
 
   timetable: {
@@ -803,8 +831,34 @@ export const api = {
     },
     getSeats: async () => [],
     getOccupancy: async () => ({}),
-    getReservations: async () => [],
-    updateReservation: async (id: string, data: any) => ({})
+    getReservations: async () => {
+      try {
+        const snapshot = await getDocs(collection(db, "library_reservations"));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) { return []; }
+    },
+    updateReservation: async (id: string, data: any) => {
+      try {
+        await updateDoc(doc(db, "library_reservations", id), data);
+      } catch (e) {}
+      return { id, ...data };
+    },
+    createReservation: async (data: any) => {
+      const uid = auth.currentUser?.uid || "stu-101";
+      const docRef = await addDoc(collection(db, "library_reservations"), {
+        ...data,
+        student_id: uid,
+        status: "pending",
+        reserved_at: new Date().toISOString(),
+      });
+      return { id: docRef.id, ...data, student_id: uid, status: "pending" };
+    },
+    getActiveReservations: async () => {
+      try {
+        const snapshot = await getDocs(query(collection(db, "library_reservations"), where("status", "in", ["ready_for_pickup", "pending", "borrowed"])));
+        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) { return []; }
+    }
   },
   lostFound: {
     getItems: async (type?: string, search?: string) => {

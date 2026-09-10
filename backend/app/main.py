@@ -32,23 +32,7 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     """Application lifespan events."""
-    # Security validation on startup
-    if settings.is_production:
-        insecure_keys = {
-            "dev-secret-key",
-            "dev-secret-key-change-in-production",
-            "change-this-to-a-long-random-secret-key-minimum-32-characters",
-        }
 
-        if (
-            settings.SECRET_KEY in insecure_keys
-            or len(settings.SECRET_KEY) < 32
-        ):
-            logger.critical(
-                "SECURITY ALERT: Running in PRODUCTION with insecure or "
-                "short SECRET_KEY. Please set a strong SECRET_KEY in "
-                "environment variables."
-            )
 
     yield
 
@@ -164,8 +148,7 @@ def create_application() -> FastAPI:
 
         return {
             "status": "auth_configured",
-            "jwt_algorithm": settings.ALGORITHM,
-            "auth_type": "Bearer JWT",
+            "auth_type": "Firebase ID Token",
         }
 
     return application

@@ -11,14 +11,17 @@ This service performs:
 """
 
 import math
+import asyncio
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Any
+from cachetools import TTLCache
 
 from app.core.firebase import db
 
 
 EARTH_RADIUS_M = 6_371_000
-
+# Cache campus locations for 10 minutes to avoid repeated Firestore queries
+_locations_cache = TTLCache(maxsize=1, ttl=600)
 
 def _haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     """Great-circle distance in metres between two coordinates."""
@@ -58,15 +61,34 @@ class LocationService:
     STALE_THRESHOLD_MINUTES = 5
 
     @staticmethod
+    async def _get_campus_locations() -> list[dict[str, Any]]:
+        """Fetch and cache campus locations."""
+        if db is None:
+            return []
+        
+        if "all" in _locations_cache:
+            return _locations_cache["all"]
+
+        def fetch():
+            return list(db.collection("campus_locations").stream())
+        
+        docs = await asyncio.to_thread(fetch)
+        locations = []
+        for doc in docs:
+            loc = doc.to_dict()
+            loc["_doc_id"] = doc.id
+            locations.append(loc)
+            
+        _locations_cache["all"] = locations
+        return locations
+
+    @staticmethod
     async def match_location(lat: float, lng: float) -> Optional[dict[str, Any]]:
         """Return the nearest campus location if the coordinate falls inside its geofence."""
-        if db is None:
-            return None
-        locations_ref = db.collection("campus_locations").stream()
+        locations = await LocationService._get_campus_locations()
         best: Optional[dict[str, Any]] = None
         best_dist = float("inf")
-        for doc in locations_ref:
-            loc = doc.to_dict()
+        for loc in locations:
             loc_lat = loc.get("latitude")
             loc_lng = loc.get("longitude")
             if loc_lat is None or loc_lng is None:
@@ -76,7 +98,7 @@ class LocationService:
             if dist <= radius and dist < best_dist:
                 best_dist = dist
                 best = {
-                    "id": doc.id,
+                    "id": loc.get("_doc_id", ""),
                     "name": loc.get("name", ""),
                     "location_type": str(loc.get("location_type", "")),
                     "latitude": loc_lat,
@@ -107,19 +129,22 @@ class LocationService:
         matched_loc_id = matched["id"] if matched else None
         matched_loc_name = matched["name"] if matched else None
 
-        doc_ref = db.collection("user_location_states").document(str(user_id))
-        doc_ref.set({
-            "user_id": str(user_id),
-            "latitude": latitude,
-            "longitude": longitude,
-            "accuracy": accuracy,
-            "timestamp": timestamp.isoformat(),
-            "tracking_enabled": True,
-            "location_status": "LIVE",
-            "last_updated": now.isoformat(),
-            "location_id": matched_loc_id,
-            "location_name": matched_loc_name,
-        }, merge=True)
+        def update_doc():
+            doc_ref = db.collection("user_location_states").document(str(user_id))
+            doc_ref.set({
+                "user_id": str(user_id),
+                "latitude": latitude,
+                "longitude": longitude,
+                "accuracy": accuracy,
+                "timestamp": timestamp.isoformat(),
+                "tracking_enabled": True,
+                "location_status": "LIVE",
+                "last_updated": now.isoformat(),
+                "location_id": matched_loc_id,
+                "location_name": matched_loc_name,
+            }, merge=True)
+            
+        await asyncio.to_thread(update_doc)
 
         return {
             "user_id": str(user_id),
@@ -137,16 +162,20 @@ class LocationService:
         """Mark a user's location tracking as disabled and clear coordinates."""
         if db is None:
             return
-        doc_ref = db.collection("user_location_states").document(str(user_id))
-        doc_ref.set({
-            "tracking_enabled": False,
-            "location_status": "OFF",
-            "latitude": None,
-            "longitude": None,
-            "location_id": None,
-            "location_name": None,
-            "last_updated": datetime.now(timezone.utc).isoformat(),
-        }, merge=True)
+            
+        def disable_doc():
+            doc_ref = db.collection("user_location_states").document(str(user_id))
+            doc_ref.set({
+                "tracking_enabled": False,
+                "location_status": "OFF",
+                "latitude": None,
+                "longitude": None,
+                "location_id": None,
+                "location_name": None,
+                "last_updated": datetime.now(timezone.utc).isoformat(),
+            }, merge=True)
+            
+        await asyncio.to_thread(disable_doc)
 
     @staticmethod
     async def get_rush_state() -> list[dict[str, Any]]:
@@ -155,27 +184,25 @@ class LocationService:
             return []
 
         # Fetch all campus locations
-        locations_ref = db.collection("campus_locations").stream()
-        locations: list[dict[str, Any]] = []
-        for doc in locations_ref:
-            loc = doc.to_dict()
-            loc["_doc_id"] = doc.id
-            locations.append(loc)
-
+        locations = await LocationService._get_campus_locations()
         location_map: dict[str, dict] = {loc["_doc_id"]: loc for loc in locations}
         gps_total_users: dict[str, int] = {loc["_doc_id"]: 0 for loc in locations}
 
-        # Fetch active user location states
-        user_states_ref = (
-            db.collection("user_location_states")
-            .where("tracking_enabled", "==", True)
-            .stream()
-        )
+        def fetch_states_and_overrides():
+            user_states = list(db.collection("user_location_states")
+                .where("tracking_enabled", "==", True)
+                .stream())
+            overrides = list(db.collection("admin_rush_overrides")
+                .where("is_active", "==", True)
+                .stream())
+            return user_states, overrides
+            
+        user_states_docs, overrides_docs = await asyncio.to_thread(fetch_states_and_overrides)
 
         now = datetime.now(timezone.utc)
         cutoff = now - timedelta(minutes=LocationService.STALE_THRESHOLD_MINUTES)
 
-        for doc in user_states_ref:
+        for doc in user_states_docs:
             us = doc.to_dict()
             lat = us.get("latitude")
             lng = us.get("longitude")
@@ -200,13 +227,7 @@ class LocationService:
                 if matched:
                     gps_total_users[matched["id"]] = gps_total_users.get(matched["id"], 0) + 1
 
-        # Fetch active admin overrides
-        overrides_ref = (
-            db.collection("admin_rush_overrides")
-            .where("is_active", "==", True)
-            .stream()
-        )
-        overrides = [doc.to_dict() | {"_doc_id": doc.id} for doc in overrides_ref]
+        overrides = [doc.to_dict() | {"_doc_id": doc.id} for doc in overrides_docs]
 
         result = []
         for loc in locations:
@@ -262,14 +283,16 @@ class LocationService:
         """Return an active admin override for a location, or None."""
         if db is None:
             return None
-        overrides_ref = (
-            db.collection("admin_rush_overrides")
-            .where("location_id", "==", location_id)
-            .where("is_active", "==", True)
-            .stream()
-        )
+            
+        def fetch_overrides():
+            return list(db.collection("admin_rush_overrides")
+                .where("location_id", "==", location_id)
+                .where("is_active", "==", True)
+                .stream())
+                
+        overrides_docs = await asyncio.to_thread(fetch_overrides)
         now = datetime.now(timezone.utc)
-        for doc in overrides_ref:
+        for doc in overrides_docs:
             ov = doc.to_dict()
             try:
                 expires_at = datetime.fromisoformat(ov.get("expires_at", ""))
@@ -296,30 +319,33 @@ class LocationService:
         now = datetime.now(timezone.utc)
         expires_at = now + timedelta(minutes=duration_minutes)
 
-        # Deactivate existing overrides for this location
-        existing_ref = (
-            db.collection("admin_rush_overrides")
-            .where("location_id", "==", location_id)
-            .where("is_active", "==", True)
-            .stream()
-        )
-        for doc in existing_ref:
-            doc.reference.update({"is_active": False})
+        def update_firestore():
+            # Deactivate existing overrides for this location
+            existing_ref = (
+                db.collection("admin_rush_overrides")
+                .where("location_id", "==", location_id)
+                .where("is_active", "==", True)
+                .stream()
+            )
+            for doc in existing_ref:
+                doc.reference.update({"is_active": False})
 
-        # Create new override
-        override_data = {
-            "location_id": location_id,
-            "admin_user_id": str(admin_user_id),
-            "people_count": people_count,
-            "rush_level": rush_level,
-            "reason": reason,
-            "duration_minutes": duration_minutes,
-            "expires_at": expires_at.isoformat(),
-            "is_active": True,
-            "created_at": now.isoformat(),
-        }
-        doc_ref = db.collection("admin_rush_overrides").add(override_data)
-        return override_data
+            # Create new override
+            override_data = {
+                "location_id": location_id,
+                "admin_user_id": str(admin_user_id),
+                "people_count": people_count,
+                "rush_level": rush_level,
+                "reason": reason,
+                "duration_minutes": duration_minutes,
+                "expires_at": expires_at.isoformat(),
+                "is_active": True,
+                "created_at": now.isoformat(),
+            }
+            db.collection("admin_rush_overrides").add(override_data)
+            return override_data
+            
+        return await asyncio.to_thread(update_firestore)
 
     @staticmethod
     async def expire_stale_overrides() -> int:
@@ -327,24 +353,28 @@ class LocationService:
         if db is None:
             return 0
         now = datetime.now(timezone.utc)
-        overrides_ref = (
-            db.collection("admin_rush_overrides")
-            .where("is_active", "==", True)
-            .stream()
-        )
-        count = 0
-        for doc in overrides_ref:
-            ov = doc.to_dict()
-            try:
-                expires_at = datetime.fromisoformat(ov.get("expires_at", ""))
-                if expires_at.tzinfo is None:
-                    expires_at = expires_at.replace(tzinfo=timezone.utc)
-                if expires_at <= now:
-                    doc.reference.update({"is_active": False})
-                    count += 1
-            except (ValueError, TypeError):
-                pass
-        return count
+        
+        def update_expired():
+            overrides_ref = (
+                db.collection("admin_rush_overrides")
+                .where("is_active", "==", True)
+                .stream()
+            )
+            count = 0
+            for doc in overrides_ref:
+                ov = doc.to_dict()
+                try:
+                    expires_at = datetime.fromisoformat(ov.get("expires_at", ""))
+                    if expires_at.tzinfo is None:
+                        expires_at = expires_at.replace(tzinfo=timezone.utc)
+                    if expires_at <= now:
+                        doc.reference.update({"is_active": False})
+                        count += 1
+                except (ValueError, TypeError):
+                    pass
+            return count
+            
+        return await asyncio.to_thread(update_expired)
 
     @staticmethod
     def _sync_match_location(locations: list[dict], lat: float, lng: float) -> Optional[dict[str, Any]]:
