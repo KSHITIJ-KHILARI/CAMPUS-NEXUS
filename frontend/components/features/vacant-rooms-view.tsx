@@ -117,8 +117,10 @@ export function VacantRoomsView() {
       });
       setTimeout(() => setBookingSuccess(null), 4000);
       refreshRooms();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setBookingSuccess(`Failed to reserve room ${roomNumber}: ${e.message}`);
+      setTimeout(() => setBookingSuccess(null), 4000);
     }
   };
 
