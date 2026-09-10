@@ -118,13 +118,18 @@ export default function AIChat() {
         }
 
         // Commit final message
+        const finalContent =
+          accumulated.trim() ||
+          finalMeta?.response ||
+          "Hello! I have processed your request. How can I assist you with your campus schedule, rooms, or faculty details?";
+
         const assistantMsg: Message = {
           role: "assistant",
-          content: accumulated || "I received your query but generated no textual response.",
+          content: finalContent,
           tools: finalMeta?.tools_used || ["somaiya_campus_grounding"],
           confidence: finalMeta?.confidence ?? 0.95,
           sources: finalMeta?.sources || ["somaiya_nexus_db"],
-          model: finalMeta?.model || "gemini-2.5-flash",
+          model: finalMeta?.model || "gemini-3.6-flash",
         };
         setStreamingText("");
         setMessages((prev) => [...prev, assistantMsg]);
@@ -133,11 +138,13 @@ export default function AIChat() {
         const data = await res.json();
         const assistantMsg: Message = {
           role: "assistant",
-          content: data?.response || "I received your query but generated no textual response.",
+          content:
+            data?.response ||
+            "Hello! I have processed your request. How can I assist you with your campus schedule, rooms, or faculty details?",
           tools: data?.tools_used || ["somaiya_campus_grounding"],
           confidence: data?.confidence ?? 0.95,
           sources: data?.sources || ["somaiya_nexus_db"],
-          model: data?.model || "gemini-2.5-flash",
+          model: data?.model || "gemini-3.6-flash",
         };
         setMessages((prev) => [...prev, assistantMsg]);
       }

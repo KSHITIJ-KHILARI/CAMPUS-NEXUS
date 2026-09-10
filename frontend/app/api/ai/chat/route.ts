@@ -37,12 +37,18 @@ export async function POST(req: NextRequest) {
       const customReadable = new ReadableStream({
         async start(controller) {
           try {
-            const result = await nexusAIFlow(chatRequest, {
-              sendChunk: (chunk: string) => {
+            const onChunk = (chunk: any) => {
+              const text = typeof chunk === "string" ? chunk : chunk?.chunk || chunk?.text || "";
+              if (text) {
                 controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ chunk })}\n\n`)
+                  encoder.encode(`data: ${JSON.stringify({ chunk: text })}\n\n`)
                 );
-              },
+              }
+            };
+
+            const result = await nexusAIFlow(chatRequest, {
+              onChunk,
+              sendChunk: onChunk,
             });
 
             // Send final structured metadata

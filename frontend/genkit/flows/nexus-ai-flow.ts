@@ -22,7 +22,22 @@ export const nexusAIFlow = ai.defineFlow(
     outputSchema: ChatResponseSchema,
   },
   async (input: ChatRequest, context?: any): Promise<ChatResponse> => {
-    const sendChunk = context?.sendChunk;
+    const sendChunk =
+      typeof context === "function"
+        ? (chunkText: string) => {
+            try {
+              (context as any)({ chunk: chunkText } as any);
+            } catch {
+              (context as any)(chunkText);
+            }
+          }
+        : typeof context?.sendChunk === "function"
+        ? context.sendChunk
+        : typeof context?.onChunk === "function"
+        ? context.onChunk
+        : undefined;
+
+    let streamedAnyChunk = false;
     const role = input.role || "student";
     const userName = input.userName || (role === "student" ? "Student" : role === "faculty" ? "Professor" : "Administrator");
 
@@ -150,22 +165,37 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
     async function executeWithModel(modelRef: any, useTools: boolean = false) {
       const toolsToPass = useTools ? campusTools : undefined;
       if (sendChunk) {
-        const { response, stream } = ai.generateStream({
-          model: modelRef,
-          system: systemInstruction,
-          prompt: input.message,
-          tools: toolsToPass,
-          config: {
-            temperature: 0.2,
-          },
-        });
+        try {
+          const { response, stream } = ai.generateStream({
+            model: modelRef,
+            system: systemInstruction,
+            prompt: input.message,
+            tools: toolsToPass,
+            config: {
+              temperature: 0.2,
+            },
+          });
 
-        for await (const chunk of stream) {
-          if (chunk.text && sendChunk) {
-            sendChunk(chunk.text);
+          for await (const chunk of stream) {
+            const chunkText = chunk.text || (chunk.content?.[0] as any)?.text || "";
+            if (chunkText && sendChunk) {
+              streamedAnyChunk = true;
+              sendChunk(chunkText);
+            }
           }
+          return await response;
+        } catch (streamErr) {
+          console.warn("generateStream failed, falling back to standard generate:", streamErr);
+          return await ai.generate({
+            model: modelRef,
+            system: systemInstruction,
+            prompt: input.message,
+            tools: toolsToPass,
+            config: {
+              temperature: 0.2,
+            },
+          });
         }
-        return await response;
       } else {
         return await ai.generate({
           model: modelRef,
@@ -279,8 +309,15 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
 
       const defaultFallbackText = `Hello ${userName}! I have analyzed your request regarding Somaiya Vidyavihar University. ${liveGroundTruth ? 'Here is the relevant institutional info: ' + liveGroundTruth : 'How else can I assist you with your schedule or campus services?'}`;
 
+      const finalResponse = resultText || defaultFallbackText;
+
+      // If stream didn't deliver any chunks (e.g. tools were used or model emitted in single turn), deliver to sendChunk now
+      if (sendChunk && !streamedAnyChunk && finalResponse) {
+        sendChunk(finalResponse);
+      }
+
       return {
-        response: resultText || defaultFallbackText,
+        response: finalResponse,
         tools_used: toolsUsed,
         confidence: modelUsed.startsWith("gemini") ? 0.98 : 0.92,
         sources: ["somaiya_institutional_core", modelUsed],
