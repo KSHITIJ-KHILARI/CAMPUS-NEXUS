@@ -20,7 +20,6 @@ import {
   Sliders
 } from "lucide-react";
 import dynamic from "next/dynamic";
-import { Compass } from "lucide-react";
 
 const CampusDigitalTwin = dynamic(() => import("@/components/features/campus-digital-twin"), {
   loading: () => (
