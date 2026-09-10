@@ -1,6 +1,5 @@
 import { z } from "genkit";
 import { ai } from "../ai";
-import { serverDb } from "@/lib/firebase-server";
 
 // 1. Student Schedule & Next Class Tool
 export const getStudentScheduleTool = ai.defineTool(
@@ -33,24 +32,32 @@ export const getStudentScheduleTool = ai.defineTool(
         input.day ||
         new Intl.DateTimeFormat("en-US", { weekday: "long" }).format(new Date());
 
-      if (serverDb && typeof serverDb.collection === "function") {
-        let q = serverDb.collection("timetables");
-        if (input.userUid) {
-          q = q.where("userId", "==", input.userUid) as any;
+      // Attempt to query server Firestore only if available and explicitly configured
+      try {
+        if (process.env.GOOGLE_APPLICATION_CREDENTIALS || process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATORS === "true") {
+          const { serverDb } = await import("@/lib/firebase-server");
+          if (serverDb && typeof serverDb.collection === "function") {
+            let q = serverDb.collection("timetables");
+            if (input.userUid) {
+              q = q.where("userId", "==", input.userUid) as any;
+            }
+            const snap = await q.get();
+            if (!snap.empty) {
+              const list = snap.docs.map((d: any) => d.data());
+              return {
+                nextClass: `Your next lecture is ${list[0].course_name || list[0].course_code || "Class"} in room ${list[0].room || list[0].room_number || "SSBAS 301"} at ${list[0].start_time || "09:00 AM"}.`,
+                classes: list.map((c: any) => ({
+                  course: `${c.course_code || ""} ${c.course_name || ""}`.trim(),
+                  time: `${c.start_time || ""} - ${c.end_time || ""}`.trim(),
+                  room: c.room || c.room_number || "TBD",
+                  day: c.day || dayName,
+                })),
+              };
+            }
+          }
         }
-        const snap = await q.get();
-        if (!snap.empty) {
-          const list = snap.docs.map((d: any) => d.data());
-          return {
-            nextClass: `Your next lecture is ${list[0].course_name || list[0].course_code || "Class"} in room ${list[0].room || list[0].room_number || "SSBAS 301"} at ${list[0].start_time || "09:00 AM"}.`,
-            classes: list.map((c: any) => ({
-              course: `${c.course_code || ""} ${c.course_name || ""}`.trim(),
-              time: `${c.start_time || ""} - ${c.end_time || ""}`.trim(),
-              room: c.room || c.room_number || "TBD",
-              day: c.day || dayName,
-            })),
-          };
-        }
+      } catch {
+        // Fall back to institutional reality data cleanly
       }
 
       // Institutional standard schedule fallback

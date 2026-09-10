@@ -15,7 +15,7 @@ const nextConfig = {
     ],
   },
   experimental: {
-    serverComponentsExternalPackages: ['sharp'],
+    serverComponentsExternalPackages: ['sharp', 'firebase-admin', '@google-cloud/firestore'],
   },
   webpack: (config) => {
     config.resolve.alias = {
