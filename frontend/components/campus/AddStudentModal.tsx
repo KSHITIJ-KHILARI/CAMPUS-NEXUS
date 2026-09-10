@@ -16,7 +16,7 @@ export function AddStudentModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [studentId, setStudentId] = useState("");
-  const [password, setPassword] = useState("demo123");
+  const [password, setPassword] = useState("");
   const [program, setProgram] = useState("MCA");
   const [semester, setSemester] = useState("1");
   const [department, setDepartment] = useState("CS");

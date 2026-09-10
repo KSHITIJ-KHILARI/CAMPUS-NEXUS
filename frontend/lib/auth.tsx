@@ -148,7 +148,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
       setToken(null);
       setUser(null);
-      router.push(ROUTES.AUTH.LOGIN);
+      
+      // Force hard navigation to clear Next.js client-side cache and ensure server re-reads empty cookies
+      if (typeof window !== "undefined") {
+        window.location.href = ROUTES.AUTH.LOGIN;
+      } else {
+        router.push(ROUTES.AUTH.LOGIN);
+      }
     }
   };
 

@@ -185,7 +185,9 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
 
       if (hasGeminiKey()) {
         try {
-          const res = await executeWithModel(getPrimaryModel(), true);
+          const lowerMsg = input.message.toLowerCase().trim();
+          const isSimpleGreeting = lowerMsg === "hi" || lowerMsg === "hello" || lowerMsg === "hey";
+          const res = await executeWithModel(getPrimaryModel(), !isSimpleGreeting);
           resultText = res.text || "";
           modelUsed = "gemini-2.5-flash";
 
@@ -207,15 +209,22 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
         } catch (geminiErr: any) {
           console.warn("Primary Gemini 2.5 Flash failed, attempting fallback to Gemini 2.0 Flash:", geminiErr?.message || geminiErr);
           try {
-            const resFallback = await executeWithModel(getFallbackModel(), true);
+            const resFallback = await executeWithModel(getFallbackModel(), !isSimpleGreeting);
             resultText = resFallback.text || "";
             modelUsed = "gemini-2.0-flash";
           } catch (fbErr: any) {
             console.warn("Gemini 2.0 Flash fallback failed, attempting local Ollama:", fbErr?.message || fbErr);
             // Fallback to local Ollama with pre-grounded context
-            const resOllama = await executeWithModel("ollama/gemma4:latest", false);
-            resultText = resOllama.text || "";
-            modelUsed = "ollama/gemma4:latest";
+            // Quick abort to avoid hanging Vercel Serverless Function on timeout
+            const abortController = new AbortController();
+            const id = setTimeout(() => abortController.abort(), 2000); // 2 second timeout
+            try {
+              const resOllama = await executeWithModel("ollama/gemma4:latest", false);
+              resultText = resOllama.text || "";
+              modelUsed = "ollama/gemma4:latest";
+            } finally {
+              clearTimeout(id);
+            }
           }
         }
       } else {

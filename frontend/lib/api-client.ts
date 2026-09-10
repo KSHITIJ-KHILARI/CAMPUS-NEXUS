@@ -539,13 +539,27 @@ export const api = {
     getAvailability: async () => ({ isAvailable: true }),
     createReservation: async (data: any) => {
       const uid = auth.currentUser?.uid || "stu-101";
+      
+      // Concurrency check
+      const snapshot = await getDocs(
+        query(
+          collection(db, "room_reservations"), 
+          where("room_number", "==", data.room_number),
+          where("status", "in", ["approved", "pending"])
+        )
+      );
+      
+      if (!snapshot.empty) {
+        throw new Error("Room is already reserved.");
+      }
+
       const docRef = await addDoc(collection(db, "room_reservations"), {
         ...data,
         student_id: uid,
-        status: "pending",
+        status: "approved", // Auto-approve
         reserved_at: new Date().toISOString(),
       });
-      return { id: docRef.id, ...data, student_id: uid, status: "pending" };
+      return { id: docRef.id, ...data, student_id: uid, status: "approved" };
     },
     getReservations: async () => {
       try {

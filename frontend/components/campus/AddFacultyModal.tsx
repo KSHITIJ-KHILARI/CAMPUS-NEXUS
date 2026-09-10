@@ -25,7 +25,7 @@ export function AddFacultyModal({
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [employeeId, setEmployeeId] = useState("");
-  const [password, setPassword] = useState("demo123");
+  const [password, setPassword] = useState("");
   const [designation, setDesignation] = useState("Assistant Professor");
   const [department, setDepartment] = useState("CS");
   const [phone, setPhone] = useState("");

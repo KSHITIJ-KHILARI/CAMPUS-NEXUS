@@ -15,7 +15,7 @@ export function AddUserModal({
 }) {
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("demo123");
+  const [password, setPassword] = useState("");
   const [role, setRole] = useState("student");
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");

@@ -47,15 +47,7 @@ export default function LoginForm({ defaultRole = "student" }: LoginFormProps) {
     }
   }
 
-  const quickLogin = (role: string) => {
-    const emails: Record<string, string> = {
-      student: "student@somaiya.edu",
-      faculty: "faculty@somaiya.edu",
-      admin: "admin@somaiya.edu",
-    }
-    setEmail(emails[role] || "student@somaiya.edu")
-    setPassword("demo123")
-  }
+
 
   return (
     <motion.div
@@ -140,30 +132,7 @@ export default function LoginForm({ defaultRole = "student" }: LoginFormProps) {
           </motion.div>
         </motion.form>
 
-        <motion.div
-          className="mt-6 relative z-10"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6, duration: 0.4 }}
-        >
-          <p className="text-xs text-gray-400 text-center mb-3">Quick Demo Access</p>
-          <div className="grid grid-cols-3 gap-2">
-            {(["student", "faculty", "admin"] as const).map((role, i) => (
-              <motion.div
-                key={role}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 + i * 0.1 }}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Button variant="outline" size="sm" onClick={() => quickLogin(role)} className="text-xs w-full capitalize">
-                  {role}
-                </Button>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
+
 
         <div className="text-center mt-4 space-y-1 relative z-10">
           <p className="text-[11px] text-gray-500">

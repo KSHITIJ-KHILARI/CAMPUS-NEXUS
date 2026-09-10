@@ -4,6 +4,7 @@ import { ollama } from "genkitx-ollama";
 
 const geminiKey =
   process.env.GEMINI_API_KEY ||
+  process.env.NEXUS_API_KEY ||
   process.env.GOOGLE_GENAI_API_KEY ||
   process.env.GOOGLE_API_KEY ||
   "";
@@ -35,6 +36,7 @@ export const ai = genkit({
 export function hasGeminiKey(): boolean {
   const key =
     process.env.GEMINI_API_KEY ||
+    process.env.NEXUS_API_KEY ||
     process.env.GOOGLE_GENAI_API_KEY ||
     process.env.GOOGLE_API_KEY ||
     "";

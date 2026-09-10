@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, List
 from datetime import datetime, timezone, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
+from app.core.config import settings
 from google import genai
 from google.genai import types
 from firebase_admin import firestore
@@ -76,9 +77,7 @@ async def chat_with_nexus(
     current_user: User = Depends(get_current_active_user),
 ):
     """Send a query to NEXUS AI using Google GenAI (Gemini) with Firestore Tool calling."""
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key:
-        api_key = os.environ.get("OPENROUTER_API_KEY") # Fallback environment variable
+    api_key = settings.EFFECTIVE_AI_KEY
         
     if not api_key or api_key == "PASTE_KEY_HERE":
         return ChatResponse(
