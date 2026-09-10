@@ -183,13 +183,14 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
       let resultText = "";
       let modelUsed = "gemini-2.5-flash";
 
+      const lowerMsg = input.message.toLowerCase().trim();
+      const isSimpleGreeting = lowerMsg === "hi" || lowerMsg === "hello" || lowerMsg === "hey";
+
       if (hasGeminiKey()) {
         try {
-          const lowerMsg = input.message.toLowerCase().trim();
-          const isSimpleGreeting = lowerMsg === "hi" || lowerMsg === "hello" || lowerMsg === "hey";
           const res = await executeWithModel(getPrimaryModel(), !isSimpleGreeting);
           resultText = res.text || "";
-          modelUsed = "gemini-2.5-flash";
+          modelUsed = "gemini-3.6-flash";
 
           // Track which tools were triggered dynamically
           if (res.messages) {
@@ -207,13 +208,13 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
             }
           }
         } catch (geminiErr: any) {
-          console.warn("Primary Gemini 2.5 Flash failed, attempting fallback to Gemini 2.0 Flash:", geminiErr?.message || geminiErr);
+          console.warn("Primary Gemini 3.6 Flash failed, attempting fallback to local Ollama:", geminiErr?.message || geminiErr);
           try {
             const resFallback = await executeWithModel(getFallbackModel(), !isSimpleGreeting);
             resultText = resFallback.text || "";
-            modelUsed = "gemini-2.0-flash";
+            modelUsed = "gemini-2.5-flash";
           } catch (fbErr: any) {
-            console.warn("Gemini 2.0 Flash fallback failed, attempting local Ollama:", fbErr?.message || fbErr);
+            console.warn("Gemini 3.6 Flash fallback failed, attempting local Ollama:", fbErr?.message || fbErr);
             // Fallback to local Ollama with pre-grounded context
             // Quick abort to avoid hanging Vercel Serverless Function on timeout
             const abortController = new AbortController();
