@@ -17,6 +17,14 @@ const nextConfig = {
   experimental: {
     serverComponentsExternalPackages: ['sharp'],
   },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@opentelemetry/exporter-jaeger': false,
+      '@opentelemetry/exporter-zipkin': false,
+    };
+    return config;
+  },
 }
 
 module.exports = nextConfig
