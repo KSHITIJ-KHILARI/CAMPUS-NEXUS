@@ -136,6 +136,14 @@ def create_application() -> FastAPI:
     # Health check
     # ----------------------------------------------------------------------- #
 
+    @application.get("/", tags=["health"])
+    async def root():
+        """Root endpoint for basic health checks."""
+        return {
+            "status": "online",
+            "message": "Campus NEXUS API is running. Access /docs for API documentation."
+        }
+
     @application.get("/health", tags=["health"])
     async def health_check():
         """Health check endpoint."""

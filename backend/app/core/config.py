@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     BCRYPT_ROUNDS: int = 12
 
-    ALLOWED_HOSTS: list[str] = Field(default_factory=lambda: ["*"])
+    ALLOWED_HOSTS: list[str] = Field(default_factory=lambda: ["*", "localhost", "127.0.0.1", "campus-nexus-6z4h.onrender.com"])
 
     @field_validator("ALLOWED_HOSTS", mode="before")
     @classmethod
@@ -51,11 +51,17 @@ class Settings(BaseSettings):
                 return [s.strip() for s in v.strip("[]").split(",") if s.strip()]
         if isinstance(v, list):
             return v
-        return ["*"]
+        return ["*", "localhost", "127.0.0.1", "campus-nexus-6z4h.onrender.com"]
 
     # --- CORS ---
     BACKEND_CORS_ORIGINS: list[str] = Field(
-        default_factory=lambda: ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000"]
+        default_factory=lambda: [
+            "http://localhost:3000", 
+            "http://localhost:5173", 
+            "http://127.0.0.1:3000",
+            "https://campus-nexus-v2.vercel.app",
+            "https://campusnexus-two.vercel.app"
+        ]
     )
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")
@@ -70,7 +76,13 @@ class Settings(BaseSettings):
                 return [s.strip() for s in v.strip("[]").split(",") if s.strip()]
         if isinstance(v, list):
             return v
-        return ["*"]
+        return [
+            "http://localhost:3000", 
+            "http://localhost:5173", 
+            "http://127.0.0.1:3000",
+            "https://campus-nexus-v2.vercel.app",
+            "https://campusnexus-two.vercel.app"
+        ]
 
     # --- Rate Limiting ---
     RATE_LIMIT_ENABLED: bool = True

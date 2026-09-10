@@ -635,7 +635,8 @@ export const api = {
     disableTracking: async () => ({ success: true }),
     getBuildings: async (): Promise<any[]> => {
       try {
-        const res = await fetch("http://127.0.0.1:9501/api/v1/digital-twin/buildings");
+        const { API_BASE_URL } = await import("./constants");
+        const res = await fetch(`${API_BASE_URL}/digital-twin/buildings`);
         if (res.ok) return await res.json();
       } catch (e) {}
       try {
@@ -972,7 +973,8 @@ export const api = {
   digitalTwin: {
     getCampusState: async () => {
       try {
-        const res = await fetch("http://127.0.0.1:9501/api/v1/digital-twin/state");
+        const { API_BASE_URL } = await import("./constants");
+        const res = await fetch(`${API_BASE_URL}/digital-twin/state`);
         if (res.ok) return await res.json();
       } catch (e) {}
       return null;

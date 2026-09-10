@@ -2,7 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  output: 'standalone',
   transpilePackages: ['three', '@react-three/fiber', '@react-three/drei'],
   eslint: {
     ignoreDuringBuilds: true,

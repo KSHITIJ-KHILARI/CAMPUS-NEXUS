@@ -14,7 +14,11 @@ export const APP_NAME = "CAMPUS NEXUS";
 export const APP_TAGLINE = "AI-Powered Campus Intelligence Platform";
 
 function normalizeApiBaseUrl(raw?: string): string {
-  const base = (raw || "http://localhost:8000/api/v1").replace(/\/+$/, "");
+  let fallback = "http://localhost:8000/api/v1";
+  if (process.env.NODE_ENV === "production") {
+    fallback = "https://campus-nexus-6z4h.onrender.com/api/v1";
+  }
+  const base = (raw || fallback).replace(/\/+$/, "");
   return base.endsWith("/api/v1") ? base : `${base}/api/v1`;
 }
 
@@ -29,7 +33,11 @@ function normalizeWsBaseUrl(raw?: string): string {
     if (api.startsWith("https://")) return `${api.replace(/^https:\/\//, "wss://")}/ws`;
     if (api.startsWith("http://")) return `${api.replace(/^http:\/\//, "ws://")}/ws`;
   }
-  return "wss://campus-nexus-acfm.onrender.com/ws";
+  let fallback = "ws://localhost:8000/ws";
+  if (process.env.NODE_ENV === "production") {
+    fallback = "wss://campus-nexus-6z4h.onrender.com/ws";
+  }
+  return fallback;
 }
 
 export const WS_BASE_URL = normalizeWsBaseUrl(process.env.NEXT_PUBLIC_WS_URL);
