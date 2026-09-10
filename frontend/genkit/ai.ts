@@ -52,7 +52,7 @@ export function getPrimaryModel() {
 
 export function getFallbackModel() {
   if (hasGeminiKey()) {
-    return googleAI.model("gemini-2.5-flash");
+    return googleAI.model("gemini-3.6-flash");
   }
   return "ollama/gemma4:latest";
 }

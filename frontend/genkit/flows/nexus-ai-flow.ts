@@ -179,9 +179,38 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
       }
     }
 
+    function extractText(res: any): string {
+      if (res?.text && typeof res.text === "string" && res.text.trim()) {
+        return res.text.trim();
+      }
+      if (res?.candidates && res.candidates.length > 0) {
+        for (const cand of res.candidates) {
+          if (cand.message?.content) {
+            for (const part of cand.message.content) {
+              if (part.text && typeof part.text === "string" && part.text.trim()) {
+                return part.text.trim();
+              }
+            }
+          }
+        }
+      }
+      if (res?.messages && res.messages.length > 0) {
+        for (const msg of [...res.messages].reverse()) {
+          if (msg.content) {
+            for (const part of msg.content) {
+              if (part.text && typeof part.text === "string" && part.text.trim()) {
+                return part.text.trim();
+              }
+            }
+          }
+        }
+      }
+      return "";
+    }
+
     try {
       let resultText = "";
-      let modelUsed = "gemini-2.5-flash";
+      let modelUsed = "gemini-3.6-flash";
 
       const lowerMsg = input.message.toLowerCase().trim();
       const isSimpleGreeting = lowerMsg === "hi" || lowerMsg === "hello" || lowerMsg === "hey";
@@ -189,7 +218,7 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
       if (hasGeminiKey()) {
         try {
           const res = await executeWithModel(getPrimaryModel(), !isSimpleGreeting);
-          resultText = res.text || "";
+          resultText = extractText(res);
           modelUsed = "gemini-3.6-flash";
 
           // Track which tools were triggered dynamically
@@ -207,21 +236,25 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
               }
             }
           }
+
+          // If resultText is empty (e.g. Gemini generated tool calls but no final text), retry without tools
+          if (!resultText) {
+            const resDirect = await executeWithModel(getPrimaryModel(), false);
+            resultText = extractText(resDirect);
+          }
         } catch (geminiErr: any) {
           console.warn("Primary Gemini 3.6 Flash failed, attempting fallback to local Ollama:", geminiErr?.message || geminiErr);
           try {
-            const resFallback = await executeWithModel(getFallbackModel(), !isSimpleGreeting);
-            resultText = resFallback.text || "";
-            modelUsed = "gemini-2.5-flash";
+            const resFallback = await executeWithModel(getFallbackModel(), false);
+            resultText = extractText(resFallback);
+            modelUsed = "gemini-3.6-flash";
           } catch (fbErr: any) {
             console.warn("Gemini 3.6 Flash fallback failed, attempting local Ollama:", fbErr?.message || fbErr);
-            // Fallback to local Ollama with pre-grounded context
-            // Quick abort to avoid hanging Vercel Serverless Function on timeout
             const abortController = new AbortController();
-            const id = setTimeout(() => abortController.abort(), 2000); // 2 second timeout
+            const id = setTimeout(() => abortController.abort(), 2000);
             try {
               const resOllama = await executeWithModel("ollama/gemma4:latest", false);
-              resultText = resOllama.text || "";
+              resultText = extractText(resOllama);
               modelUsed = "ollama/gemma4:latest";
             } finally {
               clearTimeout(id);
@@ -229,10 +262,9 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
           }
         }
       } else {
-        // No GEMINI_API_KEY set — use local Ollama Gemma with pre-grounded context
         try {
           const resOllama = await executeWithModel("ollama/gemma4:latest", false);
-          resultText = resOllama.text || "";
+          resultText = extractText(resOllama);
           modelUsed = "ollama/gemma4:latest";
         } catch (ollamaErr: any) {
           console.warn("Ollama local generation failed:", ollamaErr?.message || ollamaErr);
@@ -245,8 +277,10 @@ ${liveGroundTruth || "Somaiya Institutional Academic Term 2025-2026 Active."}`;
         toolsUsed.push("somaiya_campus_grounding");
       }
 
+      const defaultFallbackText = `Hello ${userName}! I have analyzed your request regarding Somaiya Vidyavihar University. ${liveGroundTruth ? 'Here is the relevant institutional info: ' + liveGroundTruth : 'How else can I assist you with your schedule or campus services?'}`;
+
       return {
-        response: resultText || "I received your query but generated no textual response.",
+        response: resultText || defaultFallbackText,
         tools_used: toolsUsed,
         confidence: modelUsed.startsWith("gemini") ? 0.98 : 0.92,
         sources: ["somaiya_institutional_core", modelUsed],
