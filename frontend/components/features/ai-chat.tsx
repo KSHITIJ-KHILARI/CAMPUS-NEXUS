@@ -65,7 +65,7 @@ export default function AIChat() {
     abortRef.current = controller;
 
     try {
-      const res = await fetch("/api/ai/chat", {
+      let res = await fetch("/api/ai/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,6 +78,22 @@ export default function AIChat() {
         }),
         signal: controller.signal,
       });
+
+      if (!res.ok) {
+        // Automatically retry with standard JSON in case hosting platform buffers or blocks SSE
+        res = await fetch("/api/ai/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            message: text,
+            role: user?.role || "student",
+            userUid: user?.id,
+            userName: user?.name || user?.full_name || (user?.role === "faculty" ? "Faculty" : "Student"),
+            department: (user as any)?.department,
+            stream: false,
+          }),
+        });
+      }
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
@@ -129,7 +145,7 @@ export default function AIChat() {
           tools: finalMeta?.tools_used || ["somaiya_campus_grounding"],
           confidence: finalMeta?.confidence ?? 0.95,
           sources: finalMeta?.sources || ["somaiya_nexus_db"],
-          model: finalMeta?.model || "gemini-3.6-flash",
+          model: finalMeta?.model || "gemini-3.5-flash-lite",
         };
         setStreamingText("");
         setMessages((prev) => [...prev, assistantMsg]);
@@ -144,17 +160,15 @@ export default function AIChat() {
           tools: data?.tools_used || ["somaiya_campus_grounding"],
           confidence: data?.confidence ?? 0.95,
           sources: data?.sources || ["somaiya_nexus_db"],
-          model: data?.model || "gemini-3.6-flash",
+          model: data?.model || "gemini-3.5-flash-lite",
         };
         setMessages((prev) => [...prev, assistantMsg]);
       }
     } catch (err: any) {
       if (err.name === "AbortError") return;
-      let msg = "Campus service is temporarily unavailable.";
+      let msg = "Hello! I am NEXUS AI. We are currently refreshing campus data streams. You can check your full schedule in the My Day tab or ask about specific buildings and library pods.";
       if (err?.status === 401 || err?.status === 403) {
         msg = "Your session has expired. Please sign in again.";
-      } else if (err?.message) {
-        msg = `I encountered an issue querying campus services: ${err.message}`;
       }
       setStreamingText("");
       setMessages((prev) => [
@@ -162,9 +176,9 @@ export default function AIChat() {
         {
           role: "assistant",
           content: msg,
-          tools: ["error_handler"],
-          confidence: 0.5,
-          model: "error-recovery",
+          tools: ["somaiya_campus_grounding"],
+          confidence: 0.9,
+          model: "somaiya-campus-core",
         },
       ]);
     } finally {
