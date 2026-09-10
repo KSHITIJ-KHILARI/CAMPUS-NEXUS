@@ -3,6 +3,7 @@ import { nexusAIFlow } from "@/genkit/flows/nexus-ai-flow";
 import { ChatRequest } from "@/genkit/schemas/chat";
 
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
