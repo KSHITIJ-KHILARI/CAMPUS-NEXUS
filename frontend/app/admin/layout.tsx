@@ -13,7 +13,7 @@ export default async function AdminLayout({
     <NotificationProvider>
       <div className="min-h-screen bg-campus-darker flex flex-col md:flex-row">
         <AdminNav />
-        <main className="flex-1 p-4 md:p-8 overflow-y-auto min-h-screen">
+        <main className="flex-1 p-4 md:p-8 pb-24 md:pb-8 min-h-screen min-w-0">
           {children}
         </main>
       </div>

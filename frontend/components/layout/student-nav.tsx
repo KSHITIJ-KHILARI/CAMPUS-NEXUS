@@ -117,6 +117,7 @@ export default function StudentNav() {
           {/* Navigation — Smooth scrollbar, unified LayoutGroup */}
           <LayoutGroup id="studentNavLayout">
             <nav
+              data-lenis-prevent
               className={cn("flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-1 sidebar-scroll transition-all duration-200", sidebarCollapsed ? "px-2" : "px-3")}
             >
               {navGroups.map((group, groupIdx) => (
