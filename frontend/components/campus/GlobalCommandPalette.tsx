@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Search, BookOpen, GraduationCap, MapPin, Calendar, HelpCircle, X, Sparkles } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface SearchResult {
   id: string;
@@ -104,70 +105,84 @@ export function GlobalCommandPalette({ isOpen, onClose }: { isOpen: boolean; onC
     return () => clearTimeout(timer);
   }, [query]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4">
-      <div className="w-full max-w-2xl bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
-        <div className="flex items-center px-4 border-b border-white/10 py-3 gap-3">
-          <Search className="w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search classes, books, resources, FAQs, or ask NEXUS..."
-            className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none text-base"
-            autoFocus
-          />
-          <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-lg">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="max-h-96 overflow-y-auto p-3 space-y-1">
-          {loading && (
-            <div className="p-4 text-center text-sm text-gray-400 flex items-center justify-center gap-2">
-              <Sparkles className="w-4 h-4 animate-spin text-red-500" /> Searching Campus NEXUS...
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18 }}
+          className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.96, y: -10 }}
+            transition={{ type: "spring", damping: 25, stiffness: 350 }}
+            className="w-full max-w-2xl bg-neutral-900 border border-white/10 rounded-2xl shadow-2xl overflow-hidden"
+          >
+            <div className="flex items-center px-4 border-b border-white/10 py-3 gap-3">
+              <Search className="w-5 h-5 text-gray-400" />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search classes, books, resources, FAQs, or ask NEXUS..."
+                className="flex-1 bg-transparent text-white placeholder-gray-400 focus:outline-none text-base"
+                autoFocus
+              />
+              <button onClick={onClose} className="text-gray-400 hover:text-white p-1 rounded-lg">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
 
-          {!loading && results.length === 0 && (
-            <div className="p-8 text-center text-sm text-gray-400">No results matching &quot;{query}&quot;</div>
-          )}
-
-          {!loading &&
-            results.map((res) => (
-              <div
-                key={res.id}
-                onClick={() => {
-                  if (res.actionUrl) router.push(res.actionUrl);
-                  onClose();
-                }}
-                className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group"
-              >
-                <div className="p-2 rounded-lg bg-white/5 text-red-400 group-hover:bg-red-500/20 transition-colors">
-                  {res.type === "book" && <BookOpen className="w-4 h-4" />}
-                  {res.type === "resource" && <GraduationCap className="w-4 h-4" />}
-                  {res.type === "faq" && <HelpCircle className="w-4 h-4" />}
-                  {res.type === "action" && <Sparkles className="w-4 h-4" />}
+            <div className="max-h-96 overflow-y-auto p-3 space-y-1">
+              {loading && (
+                <div className="p-4 text-center text-sm text-gray-400 flex items-center justify-center gap-2">
+                  <Sparkles className="w-4 h-4 animate-spin text-red-500" /> Searching Campus NEXUS...
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium text-white group-hover:text-red-400 transition-colors truncate">
-                    {res.title}
+              )}
+
+              {!loading && results.length === 0 && (
+                <div className="p-8 text-center text-sm text-gray-400">No results matching &quot;{query}&quot;</div>
+              )}
+
+              {!loading &&
+                results.map((res) => (
+                  <div
+                    key={res.id}
+                    onClick={() => {
+                      if (res.actionUrl) router.push(res.actionUrl);
+                      onClose();
+                    }}
+                    className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 cursor-pointer transition-colors group"
+                  >
+                    <div className="p-2 rounded-lg bg-white/5 text-red-400 group-hover:bg-red-500/20 transition-colors">
+                      {res.type === "book" && <BookOpen className="w-4 h-4" />}
+                      {res.type === "resource" && <GraduationCap className="w-4 h-4" />}
+                      {res.type === "faq" && <HelpCircle className="w-4 h-4" />}
+                      {res.type === "action" && <Sparkles className="w-4 h-4" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-white group-hover:text-red-400 transition-colors truncate">
+                        {res.title}
+                      </div>
+                      <div className="text-xs text-gray-400 truncate">{res.subtitle}</div>
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400 truncate">{res.subtitle}</div>
-                </div>
-              </div>
-            ))}
-        </div>
+                ))}
+            </div>
 
-        <div className="px-4 py-2 bg-white/5 border-t border-white/5 text-[11px] text-gray-400 flex items-center justify-between">
-          <span>
-            Use <kbd className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-white">Ctrl + K</kbd> to open anytime
-          </span>
-          <span>CAMPUS NEXUS Intelligence</span>
-        </div>
-      </div>
-    </div>
+            <div className="px-4 py-2 bg-white/5 border-t border-white/5 text-[11px] text-gray-400 flex items-center justify-between">
+              <span>
+                Use <kbd className="px-1.5 py-0.5 bg-black/40 rounded border border-white/10 text-white">Ctrl + K</kbd> to open anytime
+              </span>
+              <span>CAMPUS NEXUS Intelligence</span>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

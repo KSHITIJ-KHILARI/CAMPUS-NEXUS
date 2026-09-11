@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { BookOpen, CheckCircle, Clock, MapPin, X, BookmarkCheck, AlertCircle } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Book {
   id: string;
@@ -31,9 +32,8 @@ export function BookDetailsModal({
   const [successMsg, setSuccessMsg] = useState("");
   const [errorMsg, setErrorMsg] = useState("");
 
-  if (!isOpen || !book) return null;
-
   const handleReserve = async () => {
+    if (!book) return;
     setLoading(true);
     setErrorMsg("");
     setSuccessMsg("");
@@ -49,11 +49,25 @@ export function BookDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-lg bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 relative animate-in fade-in zoom-in-95 duration-150">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg">
-          <X className="w-5 h-5" />
-        </button>
+    <AnimatePresence>
+      {isOpen && book && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="w-full max-w-lg bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-6 relative"
+          >
+            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg">
+              <X className="w-5 h-5" />
+            </button>
 
         <div className="flex items-start gap-4">
           <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl">
@@ -110,7 +124,9 @@ export function BookDetailsModal({
             </button>
           )}
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+    )}
+  </AnimatePresence>
   );
 }

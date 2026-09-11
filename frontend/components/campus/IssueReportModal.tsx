@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AlertCircle, CheckCircle, X, ShieldAlert } from "lucide-react";
 import { api } from "@/lib/api-client";
+import { motion, AnimatePresence } from "framer-motion";
 
 export function IssueReportModal({
   isOpen,
@@ -20,8 +21,6 @@ export function IssueReportModal({
   const [priority, setPriority] = useState("medium");
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
-
-  if (!isOpen) return null;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,11 +49,25 @@ export function IssueReportModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-5 relative animate-in fade-in zoom-in-95 duration-150">
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg">
-          <X className="w-5 h-5" />
-        </button>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 15 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 15 }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="w-full max-w-md bg-neutral-900 border border-white/10 rounded-2xl p-6 shadow-2xl space-y-5 relative"
+          >
+            <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white p-1 rounded-lg">
+              <X className="w-5 h-5" />
+            </button>
 
         <div className="flex items-center gap-3">
           <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-500 rounded-xl">
@@ -157,7 +170,9 @@ export function IssueReportModal({
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
+    )}
+  </AnimatePresence>
   );
 }

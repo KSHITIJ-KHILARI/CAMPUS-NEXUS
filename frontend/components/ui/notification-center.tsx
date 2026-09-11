@@ -137,7 +137,12 @@ export function NotificationCenter() {
         className="relative p-2 rounded-xl hover:bg-white/10 text-gray-300 hover:text-white transition-colors"
         aria-label="Campus Central Notifications"
       >
-        <Bell className="h-5 w-5" />
+        <motion.div
+          animate={unreadCount > 0 && !prefersReduced ? { rotate: [0, -12, 12, -8, 8, 0] } : {}}
+          transition={{ repeat: Infinity, repeatDelay: 5, duration: 0.6, ease: "easeInOut" }}
+        >
+          <Bell className="h-5 w-5" />
+        </motion.div>
         <AnimatePresence>
           {unreadCount > 0 && (
             <motion.span

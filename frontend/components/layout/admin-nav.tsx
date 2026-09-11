@@ -28,6 +28,7 @@ import { useAuth } from "@/lib/auth"
 import { EmergencySOSButton } from "@/components/emergency/emergency-sos-button"
 import { LocationConsentBanner } from "@/components/ui/location-consent-banner"
 import { Footer } from "@/components/ui/footer"
+import { motion } from "framer-motion"
 
 const navGroups = [
   {
@@ -117,12 +118,19 @@ export default function AdminNav() {
                         "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 relative group",
                         sidebarCollapsed ? "px-0 py-2.5 justify-center" : "px-3 py-2.5",
                         isActive
-                          ? "bg-campus-primary/10 text-campus-primary"
+                          ? "text-campus-primary"
                           : "text-gray-400 hover:text-white hover:bg-white/5"
                       )}
                     >
-                      <Icon className="h-5 w-5 flex-shrink-0" />
-                      {!sidebarCollapsed && <span>{item.label}</span>}
+                      {isActive && (
+                        <motion.div
+                          layoutId="adminActiveNavIndicator"
+                          className="absolute inset-0 bg-campus-primary/10 border border-campus-primary/20 rounded-xl"
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                      <Icon className="h-5 w-5 flex-shrink-0 relative z-10" />
+                      {!sidebarCollapsed && <span className="relative z-10">{item.label}</span>}
                       {sidebarCollapsed && (
                         <div className="absolute left-full ml-2 px-2 py-1 bg-campus-card text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-[60] border border-white/10 shadow-lg">
                           {item.label}
@@ -225,12 +233,19 @@ export default function AdminNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                  "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors relative",
                   isActive ? "text-campus-primary" : "text-gray-400"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs">{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="adminMobileActiveNavIndicator"
+                    className="absolute inset-0 bg-campus-primary/10 rounded-lg"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <Icon className="h-5 w-5 relative z-10" />
+                <span className="text-xs relative z-10">{item.label}</span>
               </Link>
             )
           })}

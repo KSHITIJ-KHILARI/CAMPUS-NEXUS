@@ -29,37 +29,36 @@ export default function CampusHubPage() {
           <p className="text-gray-400">Navigate, explore, and feel the pulse of the campus.</p>
         </div>
 
-        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 self-start">
-          <button
-            onClick={() => setActiveTab("map")}
-            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
-              activeTab === "map"
-                ? "bg-campus-primary text-white shadow-lg shadow-campus-primary/20"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <MapIcon className="w-4 h-4" /> Campus Map
-          </button>
-          <button
-            onClick={() => setActiveTab("tour")}
-            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
-              activeTab === "tour"
-                ? "bg-campus-primary text-white shadow-lg shadow-campus-primary/20"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <Compass className="w-4 h-4" /> 3D Digital Twin
-          </button>
-          <button
-            onClick={() => setActiveTab("pulse")}
-            className={`px-4 py-2 text-sm font-semibold rounded-lg transition-all flex items-center gap-2 ${
-              activeTab === "pulse"
-                ? "bg-campus-primary text-white shadow-lg shadow-campus-primary/20"
-                : "text-gray-400 hover:text-white"
-            }`}
-          >
-            <Activity className="w-4 h-4" /> Campus Pulse
-          </button>
+        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 self-start relative">
+          {(
+            [
+              { id: "map", label: "Campus Map", icon: MapIcon },
+              { id: "tour", label: "3D Digital Twin", icon: Compass },
+              { id: "pulse", label: "Campus Pulse", icon: Activity },
+            ] as const
+          ).map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 flex items-center gap-2 ${
+                  isActive ? "text-white" : "text-gray-400 hover:text-white"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="campusHubTabActivePill"
+                    className="absolute inset-0 bg-campus-primary rounded-lg shadow-lg shadow-campus-primary/25"
+                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  />
+                )}
+                <Icon className="w-4 h-4 relative z-10" />
+                <span className="relative z-10">{tab.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
