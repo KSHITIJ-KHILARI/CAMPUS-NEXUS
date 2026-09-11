@@ -23,7 +23,7 @@ import { EmergencySOSButton } from "@/components/emergency/emergency-sos-button"
 import { LocationConsentBanner } from "@/components/ui/location-consent-banner"
 import { Footer } from "@/components/ui/footer"
 import { NotificationCenter, useNotifications } from "@/components/ui/notification-center"
-import { motion, AnimatePresence } from "framer-motion"
+import { motion, AnimatePresence, LayoutGroup } from "framer-motion"
 import { useReducedMotion } from "@/hooks/use-reduced-motion"
 
 const navGroups = [
@@ -86,26 +86,6 @@ export default function FacultyNav() {
   // Flatten for mobile nav
   const flatNavItems = navGroups.flatMap((g) => g.items)
 
-  const navContainerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: {
-        staggerChildren: prefersReduced ? 0 : 0.035,
-        delayChildren: 0.05,
-      },
-    },
-  }
-
-  const navItemVariants = {
-    hidden: prefersReduced ? { opacity: 0 } : { opacity: 0, x: -8 },
-    show: {
-      opacity: 1,
-      x: 0,
-      transition: { duration: 0.22, ease: "easeOut" },
-    },
-  }
-
   return (
     <>
       <motion.aside
@@ -114,9 +94,9 @@ export default function FacultyNav() {
         transition={{ duration: prefersReduced ? 0 : 0.26, ease: [0.16, 1, 0.3, 1] }}
         className="hidden md:flex md:flex-col md:fixed md:inset-y-0 glass-dark border-r border-white/5 z-50 overflow-hidden shadow-2xl"
       >
-        <div className="flex flex-col flex-1 min-h-0 w-[256px]">
+        <div className="flex flex-col flex-1 min-h-0 w-full overflow-hidden">
           {/* Header */}
-          <div className="flex items-center justify-between h-16 px-4 border-b border-white/5 flex-shrink-0">
+          <div className={cn("flex items-center h-16 border-b border-white/5 flex-shrink-0 transition-all duration-200", sidebarCollapsed ? "justify-center px-0" : "justify-between px-4")}>
             <Link href="/faculty/dashboard" className="flex items-center gap-2 min-w-0 group">
               {sidebarCollapsed ? (
                 <span className="text-xl font-bold text-campus-primary w-8 text-center transition-transform group-hover:scale-110 duration-200">
@@ -135,36 +115,34 @@ export default function FacultyNav() {
             {!sidebarCollapsed && <NotificationCenter />}
           </div>
 
-          {/* Navigation — scrollable with smooth scrollbar */}
-          <motion.nav
-            variants={navContainerVariants}
-            initial="hidden"
-            animate="show"
-            className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-3 space-y-4 sidebar-scroll"
-          >
-            {navGroups.map((group, idx) => (
-              <div key={idx} className="space-y-1">
-                {!sidebarCollapsed && (
-                  <div className="flex items-center gap-2 px-3 mb-2 pt-1">
-                    <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">
-                      {group.title}
-                    </span>
-                    <div className="flex-1 h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
-                  </div>
-                )}
-                {group.items.map((item) => {
-                  const Icon = item.icon
-                  const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
-                  const iconAnim = iconMicroAnimations[item.label] || "group-hover:scale-105"
+          {/* Navigation — scrollable with smooth scrollbar, unified LayoutGroup */}
+          <LayoutGroup id="facultyNavLayout">
+            <nav
+              className={cn("flex-1 overflow-y-auto overflow-x-hidden py-3 space-y-1 sidebar-scroll transition-all duration-200", sidebarCollapsed ? "px-2" : "px-3")}
+            >
+              {navGroups.map((group, groupIdx) => (
+                <div key={group.title} className="space-y-1">
+                  {!sidebarCollapsed && (
+                    <div className={cn("flex items-center gap-2 px-3 mb-1.5", groupIdx > 0 ? "pt-3" : "pt-1")}>
+                      <span className="text-[10px] font-bold text-gray-400 tracking-wider uppercase">
+                        {group.title}
+                      </span>
+                      <div className="flex-1 h-px bg-gradient-to-r from-white/10 via-white/5 to-transparent" />
+                    </div>
+                  )}
+                  {group.items.map((item) => {
+                    const Icon = item.icon
+                    const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+                    const iconAnim = iconMicroAnimations[item.label] || "group-hover:scale-105"
 
-                  return (
-                    <motion.div key={item.href} variants={navItemVariants}>
+                    return (
                       <Link
+                        key={item.href}
                         href={item.href}
                         title={sidebarCollapsed ? item.label : undefined}
                         className={cn(
-                          "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 relative group overflow-hidden select-none",
-                          sidebarCollapsed ? "px-0 py-2.5 justify-center" : "px-3 py-2.5",
+                          "flex items-center rounded-xl text-sm font-medium transition-colors duration-200 relative group select-none",
+                          sidebarCollapsed ? "w-10 h-10 mx-auto justify-center px-0" : "w-full px-3 py-2.5 gap-3 justify-start",
                           isActive
                             ? "text-white font-semibold"
                             : "text-gray-400 hover:text-white hover:bg-white/[0.06]"
@@ -175,7 +153,7 @@ export default function FacultyNav() {
                           <motion.div
                             layoutId={prefersReduced ? undefined : "facultyActiveNavIndicator"}
                             className="absolute inset-0 rounded-xl bg-gradient-to-r from-campus-primary/25 via-campus-primary/10 to-transparent border border-campus-primary/30 shadow-[0_0_18px_rgba(165,28,48,0.22)] pointer-events-none"
-                            transition={{ type: "spring", stiffness: 450, damping: 35 }}
+                            transition={{ type: "spring", stiffness: 380, damping: 32 }}
                           >
                             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-r-full bg-campus-primary shadow-[0_0_8px_rgba(165,28,48,0.9)]" />
                           </motion.div>
@@ -192,9 +170,9 @@ export default function FacultyNav() {
                         <AnimatePresence initial={false}>
                           {!sidebarCollapsed && (
                             <motion.span
-                              initial={{ opacity: 0, x: -4 }}
-                              animate={{ opacity: 1, x: 0 }}
-                              exit={{ opacity: 0, x: -4 }}
+                              initial={{ opacity: 0, width: 0 }}
+                              animate={{ opacity: 1, width: "auto" }}
+                              exit={{ opacity: 0, width: 0 }}
                               transition={{ duration: 0.16, ease: "easeInOut" }}
                               className="relative z-10 whitespace-nowrap overflow-hidden"
                             >
@@ -221,7 +199,7 @@ export default function FacultyNav() {
                         )}
 
                         {sidebarCollapsed && item.label === "Notifications" && unreadCount > 0 && (
-                          <div className="absolute top-1 right-2 z-10">
+                          <div className="absolute -top-1 -right-1 z-20">
                             {!prefersReduced && (
                               <span className="absolute inset-0 rounded-full bg-red-500 animate-ping opacity-40 duration-1000 pointer-events-none" />
                             )}
@@ -243,29 +221,29 @@ export default function FacultyNav() {
                           </div>
                         )}
                       </Link>
-                    </motion.div>
-                  )
-                })}
-              </div>
-            ))}
-          </motion.nav>
+                    )
+                  })}
+                </div>
+              ))}
+            </nav>
+          </LayoutGroup>
 
           {/* Footer Controls */}
-          <div className="p-3 border-t border-white/5 space-y-1 flex-shrink-0">
+          <div className={cn("border-t border-white/5 space-y-1 flex-shrink-0 transition-all duration-200", sidebarCollapsed ? "p-2" : "p-3")}>
             <button
               onClick={openSettings}
               className={cn(
-                "flex items-center gap-3 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/[0.06] active:scale-[0.98] transition-all duration-200 w-full relative group select-none",
-                sidebarCollapsed ? "px-0 py-2.5 justify-center" : "px-3 py-2.5"
+                "flex items-center rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/[0.06] active:scale-[0.98] transition-all duration-200 relative group select-none",
+                sidebarCollapsed ? "w-10 h-10 mx-auto justify-center px-0" : "w-full px-3 py-2.5 gap-3 justify-start"
               )}
             >
               <Settings className="h-5 w-5 flex-shrink-0 group-hover:rotate-90 transition-transform duration-300 ease-out" />
               <AnimatePresence initial={false}>
                 {!sidebarCollapsed && (
                   <motion.span
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -4 }}
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
                     transition={{ duration: 0.16 }}
                     className="whitespace-nowrap overflow-hidden"
                   >
@@ -283,8 +261,8 @@ export default function FacultyNav() {
             <button
               onClick={toggleSidebar}
               className={cn(
-                "flex items-center gap-3 rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/[0.06] active:scale-[0.98] transition-all duration-200 w-full group select-none",
-                sidebarCollapsed ? "px-0 py-2.5 justify-center" : "px-3 py-2.5"
+                "flex items-center rounded-xl text-sm font-medium text-gray-400 hover:text-white hover:bg-white/[0.06] active:scale-[0.98] transition-all duration-200 group select-none",
+                sidebarCollapsed ? "w-10 h-10 mx-auto justify-center px-0" : "w-full px-3 py-2.5 gap-3 justify-start"
               )}
               title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
             >
@@ -298,9 +276,9 @@ export default function FacultyNav() {
               <AnimatePresence initial={false}>
                 {!sidebarCollapsed && (
                   <motion.span
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -4 }}
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
                     transition={{ duration: 0.16 }}
                     className="whitespace-nowrap overflow-hidden"
                   >
@@ -313,8 +291,8 @@ export default function FacultyNav() {
             <button
               onClick={logout}
               className={cn(
-                "flex items-center gap-3 rounded-xl text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 active:scale-[0.98] transition-all duration-200 w-full relative group select-none",
-                sidebarCollapsed ? "px-0 py-2.5 justify-center" : "px-3 py-2.5"
+                "flex items-center rounded-xl text-sm font-medium text-gray-400 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/20 active:scale-[0.98] transition-all duration-200 relative group select-none",
+                sidebarCollapsed ? "w-10 h-10 mx-auto justify-center px-0" : "w-full px-3 py-2.5 gap-3 justify-start"
               )}
               title="Logout"
             >
@@ -322,9 +300,9 @@ export default function FacultyNav() {
               <AnimatePresence initial={false}>
                 {!sidebarCollapsed && (
                   <motion.span
-                    initial={{ opacity: 0, x: -4 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -4 }}
+                    initial={{ opacity: 0, width: 0 }}
+                    animate={{ opacity: 1, width: "auto" }}
+                    exit={{ opacity: 0, width: 0 }}
                     transition={{ duration: 0.16 }}
                     className="whitespace-nowrap overflow-hidden"
                   >

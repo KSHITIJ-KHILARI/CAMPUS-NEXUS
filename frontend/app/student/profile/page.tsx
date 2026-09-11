@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { motion, LayoutGroup } from "framer-motion";
 import { BackButton } from "@/components/ui/back-button";
 import { api } from "@/lib/api-client";
 import {
@@ -197,21 +198,33 @@ export default function ProfilePage() {
       </Card>
 
       {/* Tab Navigation */}
-      <div className="flex flex-wrap gap-1.5 p-1.5 bg-[#141424] border border-white/10 rounded-2xl">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-all ${
-              activeTab === tab
-                ? "bg-[#A51C30] text-white shadow-md shadow-[#A51C30]/20"
-                : "text-gray-400 hover:text-white hover:bg-white/5"
-            }`}
-          >
-            {tab}
-          </button>
-        ))}
-      </div>
+      <LayoutGroup id="profileTabs">
+        <div className="flex flex-wrap gap-1.5 p-1.5 bg-[#141424] border border-white/10 rounded-2xl">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`relative px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-colors duration-200 select-none ${
+                  isActive
+                    ? "text-white"
+                    : "text-gray-400 hover:text-white hover:bg-white/5"
+                }`}
+              >
+                {isActive && (
+                  <motion.div
+                    layoutId="profileTabActivePill"
+                    className="absolute inset-0 bg-[#A51C30] rounded-xl shadow-md shadow-[#A51C30]/25 pointer-events-none"
+                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                  />
+                )}
+                <span className="relative z-10">{tab}</span>
+              </button>
+            );
+          })}
+        </div>
+      </LayoutGroup>
 
       {/* ------------------------------------------------------------- */}
       {/* TAB CONTENT: OVERVIEW */}

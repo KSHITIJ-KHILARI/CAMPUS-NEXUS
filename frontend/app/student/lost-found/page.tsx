@@ -10,6 +10,8 @@ import { BackButton } from "@/components/ui/back-button";
 import { ReportLostFoundModal } from "@/components/campus/ReportLostFoundModal";
 import { LostItemDetailsModal } from "@/components/campus/LostItemDetailsModal";
 
+import { motion, LayoutGroup } from "framer-motion";
+
 export default function LostFoundPage() {
   const [activeTab, setActiveTab] = useState<"lost" | "found">("lost");
   const [items, setItems] = useState<any[]>([]);
@@ -23,8 +25,8 @@ export default function LostFoundPage() {
     try {
       const data = await api.lostFound.getItems(activeTab, searchQuery);
       setItems(data || []);
-    } catch {
-      //
+    } catch (err) {
+      console.error("Failed to load lost/found items:", err);
     } finally {
       setLoading(false);
     }
@@ -35,15 +37,15 @@ export default function LostFoundPage() {
   }, [activeTab, searchQuery]);
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
-      {/* Back Button */}
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
       <div className="flex items-center justify-between">
         <BackButton label="Back to Student Dashboard" fallbackPath="/student/dashboard" />
         <Button
           onClick={() => setIsReportModalOpen(true)}
-          className="bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl flex items-center gap-2"
+          className="bg-campus-primary hover:bg-campus-primary/90 text-white flex items-center gap-2 rounded-xl shadow-lg shadow-campus-primary/25"
         >
-          <Plus className="w-4 h-4" /> Report Item
+          <Plus className="h-4 w-4" />
+          Report Item
         </Button>
       </div>
 
@@ -53,22 +55,40 @@ export default function LostFoundPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2">
-        <Button
-          variant={activeTab === "lost" ? "default" : "outline"}
-          onClick={() => setActiveTab("lost")}
-          className={activeTab === "lost" ? "bg-red-600 text-white" : "border-white/10 text-gray-300"}
-        >
-          Lost Items
-        </Button>
-        <Button
-          variant={activeTab === "found" ? "default" : "outline"}
-          onClick={() => setActiveTab("found")}
-          className={activeTab === "found" ? "bg-red-600 text-white" : "border-white/10 text-gray-300"}
-        >
-          Found Items
-        </Button>
-      </div>
+      <LayoutGroup id="lostFoundTabs">
+        <div className="flex bg-white/5 p-1 rounded-xl border border-white/10 self-start w-fit">
+          <button
+            onClick={() => setActiveTab("lost")}
+            className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 select-none ${
+              activeTab === "lost" ? "text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {activeTab === "lost" && (
+              <motion.div
+                layoutId="lostFoundTabActivePill"
+                className="absolute inset-0 bg-campus-primary rounded-lg shadow-lg shadow-campus-primary/25"
+                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              />
+            )}
+            <span className="relative z-10">Lost Items</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("found")}
+            className={`relative px-4 py-2 text-sm font-semibold rounded-lg transition-colors duration-200 select-none ${
+              activeTab === "found" ? "text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {activeTab === "found" && (
+              <motion.div
+                layoutId="lostFoundTabActivePill"
+                className="absolute inset-0 bg-campus-primary rounded-lg shadow-lg shadow-campus-primary/25"
+                transition={{ type: "spring", stiffness: 400, damping: 32 }}
+              />
+            )}
+            <span className="relative z-10">Found Items</span>
+          </button>
+        </div>
+      </LayoutGroup>
 
       {/* Search */}
       <div className="relative">
