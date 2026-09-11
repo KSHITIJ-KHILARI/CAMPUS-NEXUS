@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Bot, Send, User, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/auth";
+import { motion, AnimatePresence } from "framer-motion";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 interface Message {
   role: "user" | "assistant";
@@ -25,8 +27,21 @@ const suggestedQuestions = [
   "Reserve Database System Concepts textbook",
 ];
 
+const messageVariants = {
+  hidden: { opacity: 0, y: 12, scale: 0.97 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, scale: 0.97 },
+};
+
+const noMotion = {
+  hidden: { opacity: 1, y: 0, scale: 1 },
+  visible: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 1, scale: 1 },
+};
+
 export default function AIChat() {
   const { user } = useAuth();
+  const prefersReduced = useReducedMotion();
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -196,6 +211,8 @@ export default function AIChat() {
     }
   };
 
+  const variants = prefersReduced ? noMotion : messageVariants;
+
   return (
     <div className="max-w-4xl mx-auto h-[calc(100vh-8rem)] flex flex-col space-y-4">
       <div className="flex items-center justify-between">
@@ -219,80 +236,113 @@ export default function AIChat() {
       </div>
 
       <Card className="flex-1 flex flex-col overflow-hidden border-white/10">
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {messages.map((message, idx) => (
-            <div
-              key={idx}
-              className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
-            >
-              {message.role === "assistant" && (
-                <div className="w-8 h-8 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center flex-shrink-0 text-red-400">
-                  <Bot className="h-4 w-4" />
-                </div>
-              )}
-              <div
-                className={`max-w-[80%] p-4 rounded-2xl ${
-                  message.role === "user"
-                    ? "bg-red-600 text-white font-medium shadow-lg shadow-red-600/20"
-                    : "bg-white/5 border border-white/10 text-gray-200"
-                }`}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4" data-lenis-prevent>
+          <AnimatePresence initial={false}>
+            {messages.map((message, idx) => (
+              <motion.div
+                key={idx}
+                variants={variants}
+                initial="hidden"
+                animate="visible"
+                exit="exit"
+                transition={{
+                  duration: prefersReduced ? 0 : 0.25,
+                  ease: [0.16, 1, 0.3, 1],
+                }}
+                className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}
               >
-                <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                {message.tools && message.tools.length > 0 && (
-                  <div className="mt-3 flex flex-wrap items-center gap-1.5">
-                    {message.model && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 font-mono">
-                        {message.model}
-                      </span>
-                    )}
-                    {message.tools.map((tool) => (
-                      <span key={tool} className="text-[10px] px-2 py-0.5 rounded-md bg-black/40 border border-white/10 text-gray-400 font-mono">
-                        tool: {tool}
-                      </span>
-                    ))}
+                {message.role === "assistant" && (
+                  <div className="w-8 h-8 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center flex-shrink-0 text-red-400">
+                    <Bot className="h-4 w-4" />
                   </div>
                 )}
-                {message.confidence && (
-                  <p className="text-[10px] text-gray-500 mt-1.5">
-                    Ground Truth Confidence: {Math.round(message.confidence * 100)}%
-                  </p>
-                )}
-              </div>
-              {message.role === "user" && (
-                <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0 text-blue-400">
-                  <User className="h-4 w-4" />
+                <div
+                  className={`max-w-[80%] p-4 rounded-2xl ${
+                    message.role === "user"
+                      ? "bg-red-600 text-white font-medium shadow-lg shadow-red-600/20"
+                      : "bg-white/5 border border-white/10 text-gray-200"
+                  }`}
+                >
+                  <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
+                  {message.tools && message.tools.length > 0 && (
+                    <div className="mt-3 flex flex-wrap items-center gap-1.5">
+                      {message.model && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-md bg-red-500/10 border border-red-500/30 text-red-400 font-mono">
+                          {message.model}
+                        </span>
+                      )}
+                      {message.tools.map((tool) => (
+                        <span key={tool} className="text-[10px] px-2 py-0.5 rounded-md bg-black/40 border border-white/10 text-gray-400 font-mono">
+                          tool: {tool}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {message.confidence && (
+                    <p className="text-[10px] text-gray-500 mt-1.5">
+                      Ground Truth Confidence: {Math.round(message.confidence * 100)}%
+                    </p>
+                  )}
                 </div>
-              )}
-            </div>
-          ))}
+                {message.role === "user" && (
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0 text-blue-400">
+                    <User className="h-4 w-4" />
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </AnimatePresence>
 
           {/* Streaming in-progress message */}
           {loading && streamingText && (
-            <div className="flex gap-3 justify-start">
+            <motion.div
+              initial={prefersReduced ? {} : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex gap-3 justify-start"
+            >
               <div className="w-8 h-8 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center flex-shrink-0 text-red-400">
                 <Bot className="h-4 w-4" />
               </div>
               <div className="max-w-[80%] p-4 rounded-2xl bg-white/5 border border-white/10 text-gray-200">
                 <p className="text-sm whitespace-pre-wrap leading-relaxed">{streamingText}<span className="inline-block w-1.5 h-4 bg-red-500 ml-0.5 animate-pulse rounded-sm" /></p>
               </div>
-            </div>
+            </motion.div>
           )}
 
           {/* Waiting indicator (before any tokens arrive) */}
           {loading && !streamingText && (
-            <div className="flex gap-3">
+            <motion.div
+              initial={prefersReduced ? {} : { opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2 }}
+              className="flex gap-3"
+            >
               <div className="w-8 h-8 rounded-full bg-red-500/20 border border-red-500/30 flex items-center justify-center text-red-400">
                 <Bot className="h-4 w-4" />
               </div>
               <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
                 <div className="flex gap-1.5 items-center">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: "0.2s" }} />
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-bounce" style={{ animationDelay: "0.4s" }} />
+                  {[0, 1, 2].map((i) => (
+                    <motion.div
+                      key={i}
+                      className="w-2 h-2 bg-red-500 rounded-full"
+                      animate={prefersReduced ? {} : {
+                        y: [0, -6, 0],
+                        opacity: [0.5, 1, 0.5],
+                      }}
+                      transition={{
+                        duration: 0.8,
+                        repeat: Infinity,
+                        delay: i * 0.15,
+                        ease: "easeInOut",
+                      }}
+                    />
+                  ))}
                   <span className="text-xs text-gray-400 ml-2">Consulting Campus Digital Twin...</span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
           <div ref={messagesEndRef} />
         </div>
@@ -322,15 +372,20 @@ export default function AIChat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="Ask NEXUS about schedule, rooms, library books, or campus status..."
-              className="flex-1 bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-red-500"
+              className="flex-1 bg-white/5 border-white/10 text-white placeholder-gray-500 focus:border-red-500 transition-shadow duration-200 focus:shadow-[0_0_0_2px_rgba(165,28,48,0.15)]"
             />
-            <Button
-              type="submit"
-              disabled={loading || !input.trim()}
-              className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4"
+            <motion.div
+              whileTap={prefersReduced ? {} : { scale: 0.92 }}
+              transition={{ duration: 0.1 }}
             >
-              <Send className="h-4 w-4" />
-            </Button>
+              <Button
+                type="submit"
+                disabled={loading || !input.trim()}
+                className="bg-red-600 hover:bg-red-700 text-white font-semibold px-4"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </motion.div>
           </form>
         </div>
       </Card>

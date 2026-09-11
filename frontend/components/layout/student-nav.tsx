@@ -12,6 +12,7 @@ import { EmergencySOSButton } from "@/components/emergency/emergency-sos-button"
 import { LocationConsentBanner } from "@/components/ui/location-consent-banner"
 import { Footer } from "@/components/ui/footer"
 import { NotificationCenter, useNotifications } from "@/components/ui/notification-center"
+import { motion } from "framer-motion"
 
 const navGroups = [
   {
@@ -99,22 +100,29 @@ export default function StudentNav() {
                       href={item.href}
                       title={sidebarCollapsed ? item.label : undefined}
                       className={cn(
-                        "flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 relative group",
+                        "flex items-center gap-3 rounded-xl text-sm font-medium transition-colors duration-200 relative group",
                         sidebarCollapsed ? "px-0 py-2.5 justify-center" : "px-3 py-2.5",
                         isActive
-                          ? "bg-campus-primary/10 text-campus-primary"
+                          ? "text-campus-primary font-semibold"
                           : "text-gray-400 hover:text-white hover:bg-white/5"
                       )}
                     >
-                      <Icon className="h-5 w-5 flex-shrink-0" />
-                      {!sidebarCollapsed && <span>{item.label}</span>}
+                      {isActive && (
+                        <motion.div
+                          layoutId="studentActiveNavIndicator"
+                          className="absolute inset-0 bg-campus-primary/10 border border-campus-primary/20 rounded-xl"
+                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                      <Icon className="h-5 w-5 flex-shrink-0 relative z-10" />
+                      {!sidebarCollapsed && <span className="relative z-10">{item.label}</span>}
                       {!sidebarCollapsed && item.label === "Notifications" && unreadCount > 0 && (
-                        <span className="ml-auto bg-campus-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                        <span className="ml-auto bg-campus-red text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold relative z-10">
                           {unreadCount}
                         </span>
                       )}
                       {sidebarCollapsed && item.label === "Notifications" && unreadCount > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 bg-campus-red text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+                        <span className="absolute -top-0.5 -right-0.5 bg-campus-red text-white text-[10px] rounded-full w-4 h-4 flex items-center justify-center font-bold relative z-10">
                           {unreadCount}
                         </span>
                       )}
@@ -210,12 +218,19 @@ export default function StudentNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors",
+                  "flex flex-col items-center gap-1 p-2 rounded-lg transition-colors relative",
                   isActive ? "text-campus-primary" : "text-gray-400"
                 )}
               >
-                <Icon className="h-5 w-5" />
-                <span className="text-xs">{item.label}</span>
+                {isActive && (
+                  <motion.div
+                    layoutId="studentMobileActiveNavIndicator"
+                    className="absolute inset-0 bg-campus-primary/10 rounded-lg"
+                    transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                  />
+                )}
+                <Icon className="h-5 w-5 relative z-10" />
+                <span className="text-xs relative z-10">{item.label}</span>
               </Link>
             )
           })}

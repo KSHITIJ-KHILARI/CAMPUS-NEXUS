@@ -12,6 +12,7 @@ import {
   addCentralNotification,
 } from "@/lib/relationalCampusData";
 import { api } from "@/lib/api-client";
+import { useAuth } from "@/lib/auth";
 import {
   Building2,
   DoorOpen,
@@ -27,36 +28,83 @@ import {
   ArrowUpRight,
   RefreshCw,
   Calendar,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"] as const;
 
+export interface ActiveReservationInfo {
+  id: string;
+  room_number: string;
+  student_id: string;
+  student_name?: string;
+  reserved_at: string;
+  expires_at: string;
+  duration_minutes: number;
+  status: string;
+  isMine?: boolean;
+  remainingMins?: number;
+}
+
+export type EnhancedRoomVacancyInfo = RoomVacancyInfo & {
+  activeReservation?: ActiveReservationInfo;
+};
+
 export function VacantRoomsView() {
+  const { user } = useAuth();
+  const currentUserId = user?.id || user?.email || "stu-101";
+
   const [selectedDay, setSelectedDay] = useState<string>("Monday");
   const [selectedTime, setSelectedTime] = useState<string>("10:30");
   const [selectedBuilding, setSelectedBuilding] = useState<string>("all");
   const [selectedType, setSelectedType] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<"all" | "vacant_only" | "cancelled_only">("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [roomsData, setRoomsData] = useState<RoomVacancyInfo[]>([]);
+  const [roomsData, setRoomsData] = useState<EnhancedRoomVacancyInfo[]>([]);
   const [bookingSuccess, setBookingSuccess] = useState<string | null>(null);
+  const [processingRoom, setProcessingRoom] = useState<string | null>(null);
+  const [reserveDuration, setReserveDuration] = useState<number>(60); // default 60 minutes / 1 hour
 
   const refreshRooms = async () => {
     const baseData = getVacantRoomsStatus(selectedDay, selectedTime);
     try {
       const reservations = await api.rooms.getActiveReservations();
-      const mergedData = baseData.map(roomData => {
-        const activeRes = (reservations as any[]).find(r => r.room_number === roomData.room.room_number);
+      const mergedData: EnhancedRoomVacancyInfo[] = baseData.map(roomData => {
+        const activeRes = (reservations as any[]).find(
+          r => r.room_number === roomData.room.room_number && (r.status === "approved" || r.status === "pending")
+        );
         if (activeRes) {
+          const isMine =
+            activeRes.student_id === currentUserId ||
+            (user?.email && activeRes.student_id === user.email) ||
+            (!user && activeRes.student_id === "stu-101");
+
+          const expTime = activeRes.expires_at ? new Date(activeRes.expires_at).getTime() : 0;
+          const diffMs = expTime - Date.now();
+          const remainingMins = Math.max(0, Math.ceil(diffMs / 60000));
+          const remainingText = remainingMins > 0 ? `${remainingMins}m` : "Ending soon";
+
+          const statusLabel = isMine
+            ? `Reserved by You (${remainingText} left)`
+            : `Occupied (Reserved by Student)`;
+
           return {
             ...roomData,
             is_vacant: false,
             status: "OCCUPIED" as const,
-            status_label: activeRes.status === "approved" ? "Occupied (Reserved)" : "Reservation Pending",
+            status_label: statusLabel,
+            activeReservation: {
+              ...activeRes,
+              isMine,
+              remainingMins,
+            },
           };
         }
-        return roomData;
+        return {
+          ...roomData,
+          activeReservation: undefined,
+        };
       });
       setRoomsData(mergedData);
     } catch (e) {
@@ -66,12 +114,23 @@ export function VacantRoomsView() {
 
   useEffect(() => {
     refreshRooms();
-    const handleTimetableUpdate = () => {
-      refreshRooms();
-    };
+    const handleTimetableUpdate = () => refreshRooms();
+    const handleReservationUpdate = () => refreshRooms();
+
     window.addEventListener("nexus-timetable-updated", handleTimetableUpdate);
-    return () => window.removeEventListener("nexus-timetable-updated", handleTimetableUpdate);
-  }, [selectedDay, selectedTime]);
+    window.addEventListener("nexus-room-reservations-updated", handleReservationUpdate);
+
+    // Auto-refresh interval every 10s: auto-updates countdown & automatically frees expired 1h rooms
+    const interval = setInterval(() => {
+      refreshRooms();
+    }, 10000);
+
+    return () => {
+      window.removeEventListener("nexus-timetable-updated", handleTimetableUpdate);
+      window.removeEventListener("nexus-room-reservations-updated", handleReservationUpdate);
+      clearInterval(interval);
+    };
+  }, [selectedDay, selectedTime, currentUserId]);
 
   const filteredRooms = useMemo(() => {
     return roomsData.filter((item) => {
@@ -104,13 +163,47 @@ export function VacantRoomsView() {
     return { total, vacant, cancelledFreed, occupied };
   }, [roomsData]);
 
-  const handleQuickReserve = async (roomNumber: string) => {
+  const handleQuickReserve = async (roomNumber: string, durationMinutes = reserveDuration) => {
+    setProcessingRoom(roomNumber);
     try {
-      await api.rooms.createReservation({ room_number: roomNumber });
-      setBookingSuccess(`Room ${roomNumber} reservation requested! Pending Admin approval.`);
+      await api.rooms.createReservation({
+        room_number: roomNumber,
+        duration_minutes: durationMinutes,
+        student_id: currentUserId,
+        student_name: user?.full_name || user?.name || "Student",
+      });
+      const durationLabel = durationMinutes >= 60 ? `${durationMinutes / 60} hour` : `${durationMinutes} mins`;
+      setBookingSuccess(`Room ${roomNumber} reserved for ${durationLabel}! It will automatically free up when the time expires.`);
       addCentralNotification({
-        title: `Room Reservation Requested: ${roomNumber}`,
-        message: `You have requested to reserve room ${roomNumber}. Please wait for admin approval.`,
+        title: `Room Reserved: ${roomNumber}`,
+        message: `You have reserved room ${roomNumber} for ${durationLabel}. It will automatically free up at the end of the duration.`,
+        type: "system",
+        link: "/student/rooms",
+        severity: "success",
+      });
+      setTimeout(() => setBookingSuccess(null), 4000);
+      refreshRooms();
+    } catch (e: any) {
+      console.error(e);
+      setBookingSuccess(`Failed to reserve room ${roomNumber}: ${e.message}`);
+      setTimeout(() => setBookingSuccess(null), 4000);
+    } finally {
+      setProcessingRoom(null);
+    }
+  };
+
+  const handleUnreserve = async (roomNumber: string, reservationId?: string) => {
+    setProcessingRoom(roomNumber);
+    try {
+      if (reservationId) {
+        await api.rooms.cancelReservation(reservationId, currentUserId);
+      } else {
+        await api.rooms.unreserveRoom(roomNumber, currentUserId);
+      }
+      setBookingSuccess(`Room ${roomNumber} unreserved successfully. Room is now vacant and free!`);
+      addCentralNotification({
+        title: `Room Unreserved: ${roomNumber}`,
+        message: `Your reservation for room ${roomNumber} has been cancelled. The room is now free.`,
         type: "system",
         link: "/student/rooms",
         severity: "info",
@@ -119,8 +212,10 @@ export function VacantRoomsView() {
       refreshRooms();
     } catch (e: any) {
       console.error(e);
-      setBookingSuccess(`Failed to reserve room ${roomNumber}: ${e.message}`);
+      setBookingSuccess(`Failed to unreserve room ${roomNumber}: ${e.message}`);
       setTimeout(() => setBookingSuccess(null), 4000);
+    } finally {
+      setProcessingRoom(null);
     }
   };
 
@@ -227,6 +322,20 @@ export function VacantRoomsView() {
               </select>
             </div>
 
+            <div className="flex items-center gap-1.5 bg-[#12121e] px-2.5 py-1 rounded-lg border border-white/10 text-xs">
+              <Clock className="w-3.5 h-3.5 text-emerald-400" />
+              <label className="text-gray-400 text-[11px]">Booking Window:</label>
+              <select
+                value={reserveDuration}
+                onChange={(e) => setReserveDuration(Number(e.target.value))}
+                className="bg-transparent text-white font-medium focus:outline-none cursor-pointer text-xs"
+              >
+                <option value={30} className="bg-[#181828]">30 Minutes</option>
+                <option value={60} className="bg-[#181828]">1 Hour (Standard)</option>
+                <option value={120} className="bg-[#181828]">2 Hours</option>
+              </select>
+            </div>
+
             <Button
               size="sm"
               variant="outline"
@@ -318,7 +427,15 @@ export function VacantRoomsView() {
                     <p className="text-xs text-gray-300 font-medium">{room.name}</p>
                   </div>
 
-                  {status === "FREED_BY_CANCELLATION" ? (
+                  {item.activeReservation?.isMine ? (
+                    <Badge variant="success" className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40 flex items-center gap-1 animate-pulse">
+                      <CheckCircle2 className="w-3 h-3" /> Reserved by You
+                    </Badge>
+                  ) : item.activeReservation ? (
+                    <Badge variant="danger" className="bg-red-500/20 text-red-300 border-red-500/40 flex items-center gap-1">
+                      <DoorClosed className="w-3 h-3" /> Reserved
+                    </Badge>
+                  ) : status === "FREED_BY_CANCELLATION" ? (
                     <Badge variant="warning" className="animate-pulse flex items-center gap-1">
                       <Sparkles className="w-3 h-3" /> Freed by Cancellation
                     </Badge>
@@ -335,7 +452,11 @@ export function VacantRoomsView() {
 
                 {/* Status Explanation */}
                 <div className={`p-3 rounded-xl text-xs space-y-1 ${
-                  status === "FREED_BY_CANCELLATION"
+                  item.activeReservation?.isMine
+                    ? "bg-emerald-500/15 border border-emerald-500/30 text-emerald-200"
+                    : item.activeReservation
+                    ? "bg-red-500/10 border border-red-500/20 text-red-300"
+                    : status === "FREED_BY_CANCELLATION"
                     ? "bg-amber-500/10 border border-amber-500/20 text-amber-200"
                     : is_vacant
                     ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-300"
@@ -345,6 +466,16 @@ export function VacantRoomsView() {
                     <Clock className="w-3.5 h-3.5 flex-shrink-0" />
                     {status_label}
                   </p>
+                  {item.activeReservation?.isMine && (
+                    <p className="text-[11px] text-emerald-300/80">
+                      Auto-release timer active: room will free automatically in {item.activeReservation.remainingMins} min.
+                    </p>
+                  )}
+                  {item.activeReservation && !item.activeReservation.isMine && (
+                    <p className="text-[11px] text-red-300/80">
+                      Reserved by another student. Only the student who reserved can unreserve it.
+                    </p>
+                  )}
                   {cancellation_notice && (
                     <p className="text-[11px] text-amber-300/80 italic">
                       Notice: {cancellation_notice}
@@ -391,13 +522,30 @@ export function VacantRoomsView() {
                     </Button>
                   </Link>
 
+                  {/* UNRESERVE BUTTON: Strictly visible only for the reserving student */}
+                  {item.activeReservation?.isMine && (
+                    <Button
+                      size="sm"
+                      disabled={processingRoom === room.room_number}
+                      onClick={() => handleUnreserve(room.room_number, item.activeReservation?.id)}
+                      className="text-xs h-7 bg-red-600/20 hover:bg-red-600 border border-red-500/40 text-red-300 hover:text-white transition-all flex items-center gap-1 shadow-sm"
+                      title="Release this room reservation"
+                    >
+                      <X className="w-3 h-3 mr-0.5" />
+                      {processingRoom === room.room_number ? "Releasing..." : "Unreserve"}
+                    </Button>
+                  )}
+
+                  {/* RESERVE BUTTON: available when vacant */}
                   {is_vacant && (
                     <Button
                       size="sm"
+                      disabled={processingRoom === room.room_number}
                       onClick={() => handleQuickReserve(room.room_number)}
-                      className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white"
+                      className="text-xs h-7 bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-1 shadow-sm"
                     >
-                      Reserve 1h
+                      <Clock className="w-3 h-3 mr-0.5" />
+                      {processingRoom === room.room_number ? "Reserving..." : `Reserve ${reserveDuration >= 60 ? `${reserveDuration / 60}h` : `${reserveDuration}m`}`}
                     </Button>
                   )}
                 </div>

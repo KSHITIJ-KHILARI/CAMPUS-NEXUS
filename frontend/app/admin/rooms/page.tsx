@@ -28,6 +28,8 @@ const STATUS_OPTIONS = [
   "approved",
   "rejected",
   "completed",
+  "cancelled",
+  "expired",
 ];
 
 export default function AdminRoomsPage() {
@@ -80,8 +82,10 @@ export default function AdminRoomsPage() {
       case "completed":
         return "success";
       case "rejected":
+      case "cancelled":
         return "danger";
       case "pending":
+      case "expired":
         return "warning";
       default:
         return "info";

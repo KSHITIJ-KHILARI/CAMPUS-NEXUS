@@ -1,9 +1,14 @@
 "use client";
 
+import { PageTransition } from "@/components/ui/page-transition";
+import { SmoothScrollProvider } from "@/components/ui/smooth-scroll-provider";
+
 export default function Template({ children }: { children: React.ReactNode }) {
   return (
-    <div className="h-full w-full animate-in fade-in slide-in-from-bottom-4 duration-300 ease-out fill-mode-forwards">
-      {children}
-    </div>
+    <SmoothScrollProvider>
+      <PageTransition>
+        {children}
+      </PageTransition>
+    </SmoothScrollProvider>
   );
 }

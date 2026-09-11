@@ -538,46 +538,198 @@ export const api = {
     },
     getAvailability: async () => ({ isAvailable: true }),
     createReservation: async (data: any) => {
-      const uid = auth.currentUser?.uid || "stu-101";
-      
-      // Concurrency check
-      const snapshot = await getDocs(
-        query(
-          collection(db, "room_reservations"), 
-          where("room_number", "==", data.room_number),
-          where("status", "in", ["approved", "pending"])
-        )
+      const uid = data.student_id || auth.currentUser?.uid || "stu-101";
+      const durationMinutes = Number(data.duration_minutes) || 60;
+      const now = new Date();
+      const reservedAt = now.toISOString();
+      const expiresAt = new Date(now.getTime() + durationMinutes * 60 * 1000).toISOString();
+
+      // Concurrency check using getActiveReservations
+      const active = await api.rooms.getActiveReservations();
+      const isAlreadyReserved = active.some(
+        (r: any) => r.room_number === data.room_number && (r.status === "approved" || r.status === "pending")
       );
-      
-      if (!snapshot.empty) {
+      if (isAlreadyReserved) {
         throw new Error("Room is already reserved.");
       }
 
-      const docRef = await addDoc(collection(db, "room_reservations"), {
-        ...data,
+      const reservationPayload = {
+        room_number: data.room_number,
         student_id: uid,
-        status: "approved", // Auto-approve
-        reserved_at: new Date().toISOString(),
-      });
-      return { id: docRef.id, ...data, student_id: uid, status: "approved" };
+        student_name: data.student_name || (uid === "stu-101" ? "Aarav Mehta" : "Student"),
+        status: "approved",
+        duration_minutes: durationMinutes,
+        reserved_at: reservedAt,
+        expires_at: expiresAt,
+      };
+
+      let docId = `res-${Date.now()}`;
+      try {
+        const docRef = await addDoc(collection(db, "room_reservations"), reservationPayload);
+        docId = docRef.id;
+      } catch (e) {
+        console.warn("Firestore room_reservation write fallback to local storage", e);
+      }
+
+      const finalRecord = { id: docId, ...reservationPayload };
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("nexus_room_reservations");
+          const list = raw ? JSON.parse(raw) : [];
+          list.unshift(finalRecord);
+          localStorage.setItem("nexus_room_reservations", JSON.stringify(list));
+          window.dispatchEvent(new CustomEvent("nexus-room-reservations-updated", { detail: finalRecord }));
+        } catch (e) {}
+      }
+
+      return finalRecord;
     },
     getReservations: async () => {
+      let results: any[] = [];
       try {
         const snapshot = await getDocs(collection(db, "room_reservations"));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      } catch (e) { return []; }
+        results = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {}
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("nexus_room_reservations");
+          if (raw) {
+            const localList: any[] = JSON.parse(raw);
+            localList.forEach(localItem => {
+              if (!results.some(r => r.id === localItem.id)) {
+                results.push(localItem);
+              }
+            });
+          }
+        } catch (e) {}
+      }
+      return results;
     },
     updateReservation: async (id: string, data: any) => {
       try {
         await updateDoc(doc(db, "room_reservations", id), data);
       } catch (e) {}
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("nexus_room_reservations");
+          if (raw) {
+            const list: any[] = JSON.parse(raw);
+            const updated = list.map(item => item.id === id ? { ...item, ...data } : item);
+            localStorage.setItem("nexus_room_reservations", JSON.stringify(updated));
+            window.dispatchEvent(new CustomEvent("nexus-room-reservations-updated"));
+          }
+        } catch (e) {}
+      }
       return { id, ...data };
     },
     getActiveReservations: async () => {
+      const nowTime = Date.now();
+      let allReservations: any[] = [];
+
       try {
-        const snapshot = await getDocs(query(collection(db, "room_reservations"), where("status", "in", ["approved", "pending"])));
-        return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      } catch (e) { return []; }
+        const snapshot = await getDocs(
+          query(collection(db, "room_reservations"), where("status", "in", ["approved", "pending"]))
+        );
+        allReservations = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (e) {}
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("nexus_room_reservations");
+          if (raw) {
+            const localList: any[] = JSON.parse(raw);
+            localList.forEach(localItem => {
+              const exists = allReservations.some(
+                r => r.id === localItem.id || (r.room_number === localItem.room_number && r.status === localItem.status)
+              );
+              if (!exists) {
+                allReservations.push(localItem);
+              }
+            });
+          }
+        } catch (e) {}
+      }
+
+      // Check for time-based expiry and filter active
+      const activeList: any[] = [];
+      let hadExpired = false;
+
+      for (const res of allReservations) {
+        let isExpired = false;
+        if (res.expires_at) {
+          isExpired = new Date(res.expires_at).getTime() <= nowTime;
+        } else if (res.reserved_at) {
+          const duration = (res.duration_minutes || 60) * 60 * 1000;
+          isExpired = new Date(res.reserved_at).getTime() + duration <= nowTime;
+        }
+
+        if (isExpired) {
+          hadExpired = true;
+          if (res.id) {
+            try {
+              updateDoc(doc(db, "room_reservations", res.id), { status: "expired" });
+            } catch (e) {}
+          }
+        } else if (res.status === "approved" || res.status === "pending") {
+          activeList.push(res);
+        }
+      }
+
+      if (hadExpired && typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("nexus_room_reservations");
+          if (raw) {
+            const localList: any[] = JSON.parse(raw);
+            const updated = localList.map(item => {
+              const exp = item.expires_at ? new Date(item.expires_at).getTime() : new Date(item.reserved_at).getTime() + (item.duration_minutes || 60) * 60 * 1000;
+              if (exp <= nowTime && (item.status === "approved" || item.status === "pending")) {
+                return { ...item, status: "expired" };
+              }
+              return item;
+            });
+            localStorage.setItem("nexus_room_reservations", JSON.stringify(updated));
+            window.dispatchEvent(new CustomEvent("nexus-room-reservations-updated"));
+          }
+        } catch (e) {}
+      }
+
+      return activeList;
+    },
+    cancelReservation: async (id: string, studentId?: string) => {
+      try {
+        await updateDoc(doc(db, "room_reservations", id), {
+          status: "cancelled",
+          cancelled_at: new Date().toISOString()
+        });
+      } catch (e) {}
+
+      if (typeof window !== "undefined") {
+        try {
+          const raw = localStorage.getItem("nexus_room_reservations");
+          if (raw) {
+            const list: any[] = JSON.parse(raw);
+            const updated = list.map(item => item.id === id ? { ...item, status: "cancelled", cancelled_at: new Date().toISOString() } : item);
+            localStorage.setItem("nexus_room_reservations", JSON.stringify(updated));
+          }
+          window.dispatchEvent(new CustomEvent("nexus-room-reservations-updated", { detail: { id, status: "cancelled" } }));
+        } catch (e) {}
+      }
+      return { success: true, id };
+    },
+    unreserveRoom: async (roomNumber: string, studentId?: string) => {
+      const active = await api.rooms.getActiveReservations();
+      const target = active.find((r: any) => {
+        if (r.room_number !== roomNumber) return false;
+        if (studentId && r.student_id && r.student_id !== studentId && studentId !== "stu-101") return false;
+        return true;
+      });
+      if (!target) {
+        throw new Error("No active reservation found for this room or user.");
+      }
+      return api.rooms.cancelReservation(target.id, studentId);
     }
   },
 

@@ -201,7 +201,10 @@ export default function StudentEventsPage() {
                 <div className="space-y-1 text-xs text-gray-400 pt-1 border-t border-white/10">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5 text-red-400" />
-                    {formatIstDateTime(evt.start_time)}
+                    <span>
+                      {formatIstDateTime(evt.start_time)}
+                      {evt.end_time && ` – ${formatIstDateTime(evt.end_time)}`}
+                    </span>
                   </div>
                   {evt.location && (
                     <div className="flex items-center gap-2">
