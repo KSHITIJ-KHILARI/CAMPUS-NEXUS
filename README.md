@@ -96,7 +96,7 @@ The frontend communicates with the backend via REST endpoints and WebSocket conn
 | **State Management** | Zustand, TanStack React Query |
 | **Animations** | Framer Motion, GSAP |
 | **Backend** | FastAPI (Python 3.11+), Pydantic v2, Uvicorn |
-| **Database** | PostgreSQL 16, SQLAlchemy 2.0 (Async) |
+| **Database** | Firebase , Firestore |
 | **Caching** | Redis 7 (optional, with in-memory fallback) |
 | **Authentication** | Firebase Auth, JWT with Role-Based Access Control |
 | **AI Integration** | OpenRouter / OpenAI API, Genkit |
@@ -109,7 +109,7 @@ The frontend communicates with the backend via REST endpoints and WebSocket conn
 
 - **Node.js** v18.17.0+
 - **Python** 3.11+
-- **PostgreSQL** 15+
+- **Firebase** 
 - **Redis** (optional — system includes in-memory fallback)
 
 ---
@@ -125,12 +125,8 @@ cd campus-nexus
 
 ### 2. Database Setup
 
-Create a PostgreSQL database:
+Create a Firebase database:
 
-```sql
-CREATE USER campus_nexus WITH PASSWORD 'campus_nexus_pass';
-CREATE DATABASE campus_nexus OWNER campus_nexus;
-GRANT ALL PRIVILEGES ON DATABASE campus_nexus TO campus_nexus;
 ```
 
 ### 3. Backend Setup
@@ -289,15 +285,15 @@ Build using `backend/Dockerfile` and configure:
 
 | Variable | Description |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
+| `DATABASE_URL` | Firebase URL |
 | `REDIS_URL` | Redis URL (omit for in-memory fallback) |
 | `SECRET_KEY` | 64+ character random secret |
 | `ENVIRONMENT` | `production` |
 | `BACKEND_CORS_ORIGINS` | `["https://your-frontend.com"]` |
 | `ALLOWED_HOSTS` | `["your-api-domain.com"]` |
-| `NEXUS_API_KEY` | OpenRouter or OpenAI API key |
-| `LLM_PROVIDER` | `openrouter` |
-| `LLM_MODEL` | `minimax/minimax-m3:free` |
+| `NEXUS_API_KEY` | OpenRouter or OpenAI API key or Gemini Flash |
+| `LLM_PROVIDER` | `openrouter` , 'Gemini ' |
+| `LLM_MODEL` | `minimax/minimax-m3:free` , 'gemini 3.6,gemini 3.5,gemini 3.7 flash ' |
 
 ### Frontend (Vercel / Netlify)
 
