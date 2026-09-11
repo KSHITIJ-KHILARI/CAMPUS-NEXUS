@@ -7,6 +7,8 @@ import { SettingsProvider } from "@/lib/settings-context"
 import { LocationProvider } from "@/lib/location-context"
 import SettingsModal from "@/components/ui/settings-modal"
 import { QueryProvider } from "@/lib/query-provider"
+import { SmoothScrollProvider } from "@/components/ui/smooth-scroll-provider"
+import { ScrollProgress } from "@/components/ui/scroll-progress"
 
 const inter = Inter({ subsets: ["latin"] })
 
@@ -27,7 +29,10 @@ export default function RootLayout({
            <AuthProvider>
              <SettingsProvider>
                <LocationProvider>
-                 {children}
+                 <SmoothScrollProvider>
+                   <ScrollProgress />
+                   {children}
+                 </SmoothScrollProvider>
                  <SettingsModal />
                </LocationProvider>
              </SettingsProvider>
